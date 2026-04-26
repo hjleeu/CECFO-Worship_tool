@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CECFO | 敬拜团内通系统·总控台</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&family=ZCOOL+XiaoWei&display=swap');
+
+        :root {
+            --bg: #080A0F;
+            --surface: #0F1118;
+            --border: #1E2230;
+            --text: #D8DAE8;
+            --surface2: #161A24;
+            --online: #5AB87A;
+            --offline: #E05A5A;
+            --muted: #4A4F6A;
+            --blue: #5B8FFF;
+            --gold: #E8C97A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: "ZCOOL XiaoWei";
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            position: relative;
+            z-index: 1;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.88rem 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            font-size: 1.5rem;
+            background: var(--blue);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-left span {
+            background: var(--gold);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1.35rem;
+        }
+
+        .status-dot {
+            width: 0.35rem;
+            height: 0.35rem;
+            border-radius: 50%;
+            background: var(--offline);
+            display: inline-block;
+            margin-right: 0.35rem;
+            transition: background 0.3s;
+        }
+
+        .status-dot.online {
+            background: var(--online);
+            box-shadow: 0 0 6px var(--online);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(90,184,122,0.5); }
+            50% { box-shadow: 0 0 0 5px rgba(90, 184, 122, 0); }
+        }
+
+        .status-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 15rem;
+            border-right: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-section {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-label {
+            font-size: 1rem;
+            color: var(--muted);
+            margin-bottom: 0.73rem;
+        }
+
+        .member-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.37rem;
+        }
+
+        .member-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.37rem 0.66rem;
+            background: var(--surface2);
+            border-radius: 7px;
+            font-size: 0.88rem;
+            border: 1px solid var(--border);
+            animation: fadeIn 0.37s ease;
+        }
+
+        .member-chip::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50px;
+            background: var(--online);
+            flex-shrink: 0;
+            box-shadow: 0 0 4px var(--online);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-6px); }
+            to { opacity: 1; }
+        }
+
+        .no-members {
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 1rem;
+            padding: 0.5rem 1.35rem 0;
+            font-size: 0.73rem;
+            color: var(--muted);
+        }
+
+        .status-bar span {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .log-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 1.37rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            scroll-behavior: smooth;
+        }
+
+        .log-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-area::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .empty-log {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 0.5rem;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .empty-log .big {
+            font-size: 2.5rem;
+        }
+
+        .bcast-panel {
+            border-top: 1px solid var(--border);
+            padding: 1rem 1.35rem;
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            gap: 0.73rem;
+            flex-shrink: 0;
+        }
+
+        .bcast-label {
+            font-size: 0.73rem;
+            color: var(--blue);
+        }
+
+        .quick-bcast {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.37rem;
+        }
+
+        .qb-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 0.37rem 0.88rem;
+            font-size: 0.73rem;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .qb-btn:hover {
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        .custom-bcast {
+            display: flex;
+            gap: 0.66rem;
+        }
+
+        .custom-bcast input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.66rem 1rem;
+            color: var(--text);
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .custom-bcast input:focus {
+            border-color: var(--blue);
+        }
+
+        .custom-bcast input::placeholder {
+            color: var(--muted);
+        }
+
+        .bcast-send {
+            background: var(--blue);
+            border: none;
+            border-radius: 10px;
+            padding: 0 1.35rem;
+            color: var(--text);
+            font-size: 0.88rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+        }
+
+        .bcast-send:hover {
+            opacity: 0.88;
+        }
+
+        .msg-entry {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.88rem;
+            animation: slideUp 0.25s ease;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg-entry::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            border-radius: 2px 0 0 2px;
+        }
+
+        .msg-entry::before { background: var(--muted); }
+        .msg-entry.broadcast::before { background: var(--blue); }
+        .msg-entry.issue::before { background: var(--offline); }
+        .msg-entry.vol_up::before { background: var(--online); }
+        .msg-entry.vol_down::before { background: var(--offline); }
+        .msg-entry.more_monitor::before { background: var(--gold); }
+
+        .msg-icon { 
+            font-size: 1.37rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .msg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.2rem;
+        }
+
+        .msg-body {
+            flex: 1;
+        }
+
+        .msg-from {
+            font-size: 0.73rem;
+            font-weight: 500;
+            color: var(--muted);
+        }
+
+        .msg-from.broadcast-from {
+            color: var(--blue);
+        }
+
+        .msg-time {
+            font-size: 0.73rem;
+            color: var(--muted);
+        }
+
+        .msg-text {
+            font-size: 0.88rem;
+            color: var(--text);
+            line-height: 1.37;
+        }
+        
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left"><span>CECFO</span> | 敬拜团内通系统·总控台</div>
+        <div class="header-right">
+            <div>
+                <span class="status-dot" id="status-dot"></span>
+                <span class="status-label" id="status-label">离线</span>
+            </div>
+        </div>
+    </header>
+    <div class="layout">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-label">在线用户</div>
+                <div class="member-list" id="member-list">
+                    <div class="no-members">无人在线</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="status-bar">
+                消息: <span id="msg-count">0</span>&nbsp;&nbsp;用户: <span class="member-count" id="member-count">0</span>
+            </div>
+            <div class="log-area" id="log">
+                <div class="empty-log" id="empty-log">
+                    <div class="big">🎚️</div>
+                    等待消息中...
+                </div>
+            </div>
+            <div class="bcast-panel">
+                <div class="bcast-label">📢 发送全体消息</div>
+                <div class="quick-bcast">
+                    <button class="qb-btn" data-msg="准备开始 ✅">准备开始 ✅</button>
+                </div>
+                <div class="custom-bcast">
+                    <input type="text" id="bcast-input" Placeholder="发送消息" maxlength="200">
+                    <button class="bcast-send" id="bcast-btn">➤ 发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const iconsList = {
+            more_monitor: '🎧',
+            vol_up:'🔊',
+            vol_down:'🔉',
+            ready:'✅',
+            issue:'⚠️',
+            custom:'💬',
+            broadcast:'📢'
+        };
+        let ws;
+        let msgHistory = [];
+        let member_count = 0;
+
+        function connect() {
+            ws = new WebSocket(`ws://${location.host}`);
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "register", name: "音控组", role: "dashboard" }));
+                setStatus(true);
+            };
+
+            ws.onclose = () => {
+                setStatus(false);
+            };
+
+            ws.onerror = () => {
+                ws.close();
+                setTimeout(connect, 3000);
+            }
+
+            ws.onmessage = e => {
+                const msg = JSON.parse(e.data);
+
+                switch(msg.type) {
+                    case "history":
+                        msgHistory = msg.messages || [];
+                        renderLog();
+                        break;
+                    case "worship_msg":
+                        msgHistory.push(msg);
+                        document.getElementById("msg-count").textContent = msgHistory.length;
+                        appendEntry(msg);
+                        break;
+                    case "roster":
+                        updateRoster(msg.members);
+                        break;
+                }
+            };
+        }
+
+        function setStatus(ok) {
+            document.getElementById("status-dot").classList.toggle("online", ok);
+            document.getElementById("status-label").textContent = ok ? "在线" : "离线";
+        }
+
+        function timeToString(ts) {
+            const time = new Date(ts);
+            return time.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+        }
+
+        function appendEntry(msg) {
+            const log = document.getElementById("log");
+            const empty = document.getElementById("empty-log");
+            if(empty) empty.remove();
+
+            const isBcast = msg.kind === "broadcast";
+
+            const el = document.createElement("div");
+            el.className = `msg-entry ${msg.kind || 'custom'}`;
+            el.dataset.kind = msg.kind || "custom";
+
+            el.innerHTML = `
+                <div class="msg-icon">${iconsList[msg.kind] || '💬'}</div>
+                <div class="msg-body">
+                    <div class="msg-header">
+                        <span class="msg-from ${isBcast ? 'broadcast-from' : ''}">${escHtml(msg.from)}</span>
+                        <span class="msg-time">${timeToString(msg.ts)}</span>
+                    </div>
+                    <div class="msg-text">${escHtml(msg.text)}</div>
+                </div>
+            `;
+
+            log.appendChild(el);
+            log.scrollTop = log.scrollHeight;
+            document.getElementById("msg-count").textContent = msgHistory.length;
+        }
+
+        function renderLog() {
+            const log = document.getElementById("log");
+            log.innerHTML = "";
+
+            if(msgHistory.length === 0) {
+                log.innerHTML = `<div class="empty-log" id="empty-log"><div class="big">🎚️</div>等待消息中...</div>`;
+            } else {
+                msgHistory.forEach(m => appendEntry(m));
+            }
+            document.getElementById("msg-count").textContent = msgHistory.length;
+        }
+
+        function updateRoster(members) {
+            const list = document.getElementById("member-list");
+            member_count = members.length;
+            document.getElementById("member-count").textContent = member_count;
+
+            if(members.length === 0) {
+                list.innerHTML = '<div class="no-members">无人在线</div>';
+            } else {
+                list.innerHTML = members.map(m => 
+                    `<div class="member-chip">${escHtml(m)}</div>`
+                ).join("");
+            }
+        }
+
+        document.querySelectorAll(".qb-btn").forEach(btn => {
+            btn.addEventListener("click", () => sendBroadcast(btn.dataset.msg));
+        });
+
+        document.getElementById("bcast-btn").addEventListener("click", () => {
+            const t = document.getElementById("bcast-input").value.trim();
+            if(!t) return;
+            sendBroadcast(t);
+            document.getElementById("bcast-input").value = "";
+        });
+
+        document.getElementById("bcast-input").addEventListener("keydown", e => {
+            if(e.key === "Enter") {
+                const t = e.target.value.trim();
+                if(!t) return;
+                sendBroadcast(t);
+                e.target.value = "";
+            }
+        });
+
+        function sendBroadcast(text) {
+            if(!ws || ws.readyState !== 1) return;
+            ws.send(JSON.stringify({ type: "broadcast", text }));
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        connect();
+    </script>
+</body>
+</html>

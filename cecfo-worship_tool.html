@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <title>CECFO | 敬拜团内通系统</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&family=ZCOOL+XiaoWei&display=swap');
+
+        :root {
+            --bg: #080A0F;
+            --surface: #0F1118;
+            --border: #1E2230;
+            --text: #D8DAE8;
+            --surface2: #161A24;
+            --online: #5AB87A;
+            --offline: #E05A5A;
+            --muted: #4A4F6A;
+            --blue: #5B8FFF;
+            --gold: #E8C97A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: "ZCOOL XiaoWei";
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.88rem 1.5rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .header-left {
+            font-size: 1.5rem;
+            background: var(--gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-dot {
+            width: 0.35rem;
+            height: 0.35rem;
+            border-radius: 50%;
+            background: var(--offline);
+            display: inline-block;
+            margin-right: 0.35rem;
+            transition: background 0.3s;
+            box-shadow: 0 0 0 0 var(--offline);
+            animation: none;
+        }
+
+        .status-dot.online {
+            background: var(--online);
+            box-shadow: 0 0 8px var(--online);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(90, 184, 122, 0.5); }
+            50% { box-shadow: 0 0 0 6px rgba(90, 184, 122, 0); }
+        }
+
+        .status-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        #setup {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .setup-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 375px;
+            text-align: center;
+        }
+
+        .setup-card h2 {
+            font-size: 1.88rem;
+            color: var(--gold);
+            margin-bottom: 0.37rem;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1.37rem;
+        }
+
+        .preset-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.73rem;
+            color: var(--text);
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .preset-btn:hover, .preset-btn.selected {
+            background: var(--gold);
+            color: var(--bg);
+            border-color: var(--gold);
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background-color: var(--gold);
+            border: none;
+            border-radius: 10px;
+            padding: 0.73rem;
+            color: var(--bg);
+            font-size: 1.37rem;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.88;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        #app {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .badge {
+            font-size: 1.37rem;
+            color: var(--gold);
+            background: var(--surface2);
+            border-radius: 7px;
+            padding: 0.37rem 0.73rem;
+            display: inline-block;
+            align-self: flex-start;
+        }
+
+        .section-label {
+            font-size: 0.73rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .cue-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.73rem;
+        }
+
+        .cue-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 1rem 0.88rem;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.15s;
+        }
+
+        .cue-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            transition: opacity 0.1s;
+            border-radius: inherit;
+        }
+
+        .cue-btn:active::after {
+            opacity: 0.05;
+        }
+
+        .cue-btn .icon {
+            font-size: 1.37rem;
+            flex-shrink: 0;
+        }
+
+        .cue-label {
+            font-size: 0.88rem;
+            font-weight: 500;
+            line-height: 1.37rem;
+        }
+
+        .cue-desc {
+            font-size: 0.73rem;
+            color: var(--muted);
+            font-weight: 300;
+        }
+
+        .custom-msg-area {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .custom-msg-area input {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.66rem 1rem;
+            color: var(--text);
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .custom-msg-area input:focus {
+            border-color: var(--gold);
+        }
+
+        .custom-msg-area input::placeholder {
+            color: var(--muted);
+        }
+
+        .custom-msg-area button {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0 1rem;
+            color: var(--gold);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .custom-msg-area button:hover {
+            background: var(--surface2);
+        }
+
+        #bcast-banner {
+            display: none;
+            background-color: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 1rem 1.37rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #bcast-banner .bcast-label {
+            font-size: 0.73rem;
+            color: var(--blue);
+            margin-bottom: 0.37rem;
+        }
+
+        #bcast-banner .bcast-text {
+            font-size: 1rem;
+            color: var(--text);
+        }
+
+        .flash {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--surface2);
+            color: var(--text);
+            padding: 0.5rem 1.37rem;
+            border-radius: 20px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+
+        .flash.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">CECFO | 敬拜团内通系统</div>
+        <div>
+            <span class="status-dot" id="status-dot"></span>
+            <span class="status-label" id="status-label">离线</span>
+        </div>
+    </header>
+
+    <div id="setup">
+        <div class="setup-card">
+            <h2>请选择你的身份</h2>
+            <div class="preset-grid">
+                <button class="preset-btn" data-name="🎤 无线1号">🎤 无线1号</button>
+                <button class="preset-btn" data-name="🎤 无线2号">🎤 无线2号</button>
+                <button class="preset-btn" data-name="🎤 无线3号">🎤 无线3号</button>
+                <button class="preset-btn" data-name="🎤 无线4号">🎤 无线4号</button>
+                <button class="preset-btn" data-name="🎤 无线5号">🎤 无线5号</button>
+                <button class="preset-btn" data-name="🎹 琴">🎹 琴</button>
+                <button class="preset-btn" data-name="🥁 鼓">🥁 鼓</button>
+                <button class="preset-btn" data-name="🎸 吉他">🎸 吉他</button>
+                <button class="preset-btn" data-name="🎸 贝斯">🎸 贝斯</button>
+            </div>
+            <button class="btn-primary" id="join-btn">加入</button>
+        </div> 
+    </div>
+
+    <div id="app">
+        <div class="bcast-banner" id="bcast-banner">
+            <div class="bcast-label">📢 音控组</div>
+            <div class="bcast-text" id="bcast-text"></div>
+        </div>
+
+        <div>
+            <div class="badge" id="badge">未知</div>
+        </div>
+
+        <div>
+            <div class="section-label">快捷消息</div>
+            <div class="cue-grid">
+                <button class="cue-btn" data-kind="more_monitor" data-msg="耳返多点">
+                    <span class="icon">🎧</span>
+                    <div>
+                        <div class="cue-label">耳返多点</div>
+                        <div class="cue-desc">耳返整体声音太小听不清。</div>
+                    </div>
+                </button>
+                <button class="cue-btn" data-kind="vol_up" data-msg="多点自己">
+                    <span class="icon">🔊</span>
+                    <div>
+                        <div class="cue-label">多点自己</div>
+                        <div class="cue-desc">耳返里自己声音太小听不清。</div>
+                    </div>
+                </button>
+                <button class="cue-btn" data-kind="vol_down" data-msg="少点自己">
+                    <span class="icon">🔉</span>
+                    <div>
+                        <div class="cue-label">少点自己</div>
+                        <div class="cue-desc">耳返里自己声音太大了。</div>
+                    </div>
+                </button>
+                <button class="cue-btn" data-kind="vol_up" data-msg="琴声多点">
+                    <span class="icon">🎹</span>
+                    <div>
+                        <div class="cue-label">琴声多点</div>
+                        <div class="cue-desc">耳返里琴声音太小听不清。</div>
+                    </div>
+                </button>
+                <button class="cue-btn" data-kind="vol_down" data-msg="琴声少点">
+                    <span class="icon">🎹</span>
+                    <div>
+                        <div class="cue-label">琴声少点</div>
+                        <div class="cue-desc">耳返里琴声音太大了。</div>
+                    </div>
+                </button>
+                <button class="cue-btn" data-kind="issue" data-msg="设备故障">
+                    <span class="icon">⚠️</span>
+                    <div>
+                        <div class="cue-label">设备故障</div>
+                        <div class="cue-desc">设备故障需要帮忙。</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-label">💬 自定义消息</div>
+            <div class="custom-msg-area">
+                <input type="text" id="custom-msg" placeholder="自定义消息..." maxlength="120">
+                <button id="custom-send">➤</button>
+            </div>
+        </div>
+
+        <div class="flash" id="flash">发送成功 ✓</div>
+
+        <script>
+            let ws, whoAmI = "";
+            let selected = "";
+
+            document.querySelectorAll(".preset-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("selected"));
+                    btn.classList.add("selected");
+                    selected = btn.dataset.name;    
+                });
+            });
+
+            document.getElementById("join-btn").addEventListener("click", () => {
+                whoAmI = selected;
+                if(!whoAmI) {
+                    alert("请选择你的身份");
+                    return;
+                }
+                connect();
+            });
+
+            function connect() {
+                ws = new WebSocket(`ws://${location.host}`);
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({ type: "register", name: whoAmI, role: "client" }));
+                    setStatus(true);
+                    document.getElementById("setup").style.display = "none";
+                    document.getElementById("app").style.display = "flex";
+                    document.getElementById("badge").textContent = whoAmI;
+                };
+
+                ws.onclose = () => {
+                    setStatus(false);
+                };
+
+                ws.onerror = () => {
+                    ws.close();
+                    setTimeout(connect, 3000);
+                };
+
+                ws.onmessage = e => {
+                    const msg = JSON.parse(e.data);
+                    if(msg.type === "broadcast") showBroadcast(msg.text);
+                };
+            }
+            function setStatus(ok) {
+                document.getElementById("status-dot").classList.toggle("online", ok);
+                document.getElementById("status-label").textContent = ok ? "在线" : "离线";
+            }
+
+            function sendMsg(kind, text) {
+                if(!ws || ws.readyState !== 1) return;
+                ws.send(JSON.stringify({ type: "worship_msg", kind, text }));
+                flashSent();
+            }
+
+            document.querySelectorAll(".cue-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    sendMsg(btn.dataset.kind, btn.dataset.msg);
+                });
+            });
+
+            document.getElementById("custom-send").addEventListener("click", sendCustom);
+            document.getElementById("custom-msg").addEventListener("keydown", e => {
+                if(e.key === "Enter") sendCustom();
+            });
+
+            function sendCustom() {
+                const t = document.getElementById("custom-msg").value.trim();
+                if(!t) return;
+                sendMsg("custom", t);
+                document.getElementById("custom-msg").value = "";
+            }
+
+            function flashSent() {
+                const el = document.getElementById("flash");
+                el.classList.add("show");
+                setTimeout(() => el.classList.remove("show"), 1500);
+            }
+            
+            let bcastTimer;
+            function showBroadcast(text) {
+                const banner = document.getElementById("bcast-banner");
+                document.getElementById("bcast-text").textContent = text;
+                banner.style.display = "block";
+                clearTimeout(bcastTimer);
+                bcastTimer = setTimeout(() => { banner.style.display = "none"; }, 7300);
+            }
+        </script>
+    </div>
+</body>
+</html>
