@@ -427,7 +427,8 @@
         let member_count = 0;
 
         function connect() {
-            ws = new WebSocket(`ws://${location.host}`);
+            const proto = location.protocol === "https:" ? "wss:" : "ws:";
+            ws = new WebSocket(`${proto}//${location.host}`);
             ws.onopen = () => {
                 ws.send(JSON.stringify({ type: "register", name: "音控组", role: "dashboard" }));
                 setStatus(true);

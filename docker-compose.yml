@@ -1,0 +1,13 @@
+services:
+  worship-tool:
+    build: .
+    container_name: worship-tool
+    restart: unless-stopped
+    ports:
+      - "1314:1314"
+    networks:
+      - cloudflared
+
+networks:
+  cloudflared:
+    external: true

@@ -109,6 +109,12 @@
             margin-bottom: 0.37rem;
         }
 
+        .setup-card span {
+            font-size: 0.88rem;
+            color: var(--muted);
+            margin-bottom: 0.37rem;
+        }
+
         .preset-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -278,6 +284,10 @@
 
         #bcast-banner {
             display: none;
+            position: fixed;
+            z-index: 100;
+            top: 3.7rem;
+            align-self: center;
             background-color: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 15px;
@@ -332,7 +342,8 @@
 
     <div id="setup">
         <div class="setup-card">
-            <h2>请选择你的身份</h2>
+            <h2>请选择你的角色</h2>
+            <span>根据当天服事安排选择，方便音控组快速辨认。</span>
             <div class="preset-grid">
                 <button class="preset-btn" data-name="🎤 无线1号">🎤 无线1号</button>
                 <button class="preset-btn" data-name="🎤 无线2号">🎤 无线2号</button>
@@ -438,7 +449,8 @@
             });
 
             function connect() {
-                ws = new WebSocket(`ws://${location.host}`);
+                const proto = location.protocol === "https:" ? "wss:" : "ws:";
+                ws = new WebSocket(`${proto}//${location.host}`);
                 ws.onopen = () => {
                     ws.send(JSON.stringify({ type: "register", name: whoAmI, role: "client" }));
                     setStatus(true);
@@ -461,6 +473,7 @@
                     if(msg.type === "broadcast") showBroadcast(msg.text);
                 };
             }
+
             function setStatus(ok) {
                 document.getElementById("status-dot").classList.toggle("online", ok);
                 document.getElementById("status-label").textContent = ok ? "在线" : "离线";
