@@ -88,6 +88,19 @@ function handleMessage(client, msg) {
             forEachRole("client", (c) => send(c.ws, { type: "broadcast", from: client.name, text: msg.text, ts: entry_bcast.ts }));
             forEachRole("dashboard", (d) => send(d.ws, { type:"worship_msg", ...entry_bcast }));
             break;
+
+        case "clear_history":
+            if(client.role !== "dashboard") return;
+            msgHistory = [];
+            forEachRole("dashboard", (d) => send(d.ws, { type: "history", messages: [] }));
+            break;
+        
+        case "clear_history_all":
+            if(client.role !== "dashboard") return;
+            msgHistory = [];
+            forEachRole("dashboard", (d) => send(d.ws, { type: "history", messages: [] }));
+            forEachRole("client", (c) => send(c.ws, { type: "clear_history" }));
+            break;
     }
 }
 
@@ -118,6 +131,6 @@ function getLanIP() {
 
 server.listen(PORT, () => {
     const ip = getLanIP();
-    console.log(`Worship team → http://${ip}:${PORT}/cecfo-worship_tool.html`);
-    console.log(`Mix team → http://${ip}:${PORT}/cecfo-worship_dashboard.html\n`);
+    console.log(`Worship team → http://${ip}:${PORT}`);
+    console.log(`Mix team → http://${ip}:${PORT}/dashboard\n`);
 });

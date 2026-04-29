@@ -311,6 +311,58 @@
             color: var(--text);
         }
 
+        .log-area {
+            background: var(--surface2);
+            padding: 0.73rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.37rem;
+            border-radius: 7px;
+        }
+
+        .msg-area {
+            overflow-y: auto;
+            max-height: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.37rem;
+            scroll-behavior: smooth;
+        }
+
+        .msg-area::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .msg-area::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .empty-log {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 0.5rem;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        #clear-history {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 0.66rem;
+            cursor: pointer;
+            align-self: flex-end;
+            padding: 0;
+            transition: color 0.15s;
+        }
+
+        #clear-history:hover {
+            color: var(--offline);
+        }
+
         .flash {
             position: fixed;
             bottom: 2rem;
@@ -424,10 +476,25 @@
                 <button id="custom-send">➤</button>
             </div>
         </div>
+        <div class="log-area">
+            <button id="clear-history">🗑 清空</button>
+            <div class="msg-area" id="msg-area">
+                <div class="empty-log" id="empty-log">等待消息中...</div>
+            </div>
+        </div>
 
         <div class="flash" id="flash">发送成功 ✓</div>
 
         <script>
+            const iconsList = {
+                more_monitor: '🎧',
+                vol_up:'🔊',
+                vol_down:'🔉',
+                ready:'✅',
+                issue:'⚠️',
+                custom:'💬',
+                broadcast:'📢'
+            };
             let ws, whoAmI = "";
             let selected = "";
 
@@ -435,14 +502,14 @@
                 btn.addEventListener("click", () => {
                     document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("selected"));
                     btn.classList.add("selected");
-                    selected = btn.dataset.name;    
+                    selected = btn.dataset.name;
                 });
             });
 
             document.getElementById("join-btn").addEventListener("click", () => {
                 whoAmI = selected;
                 if(!whoAmI) {
-                    alert("请选择你的身份");
+                    alert("请选择你的角色");
                     return;
                 }
                 connect();
@@ -470,7 +537,8 @@
 
                 ws.onmessage = e => {
                     const msg = JSON.parse(e.data);
-                    if(msg.type === "broadcast") showBroadcast(msg.text);
+                    if(msg.type === "broadcast") showBroadcast(msg.text, msg.ts);
+                    if(msg.type === "clear_history") clearLog();
                 };
             }
 
@@ -482,7 +550,33 @@
             function sendMsg(kind, text) {
                 if(!ws || ws.readyState !== 1) return;
                 ws.send(JSON.stringify({ type: "worship_msg", kind, text }));
+                appendClientMsg(kind, text);
                 flashSent();
+            }
+
+            function appendClientMsg(kind, text) {
+                const msg_area = document.getElementById("msg-area");
+                const empty = document.getElementById("empty-log");
+                if(empty) empty.remove();
+
+                const el = document.createElement("div");
+                el.style.cssText = `
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-left: 3px solid var(--gold);
+                    border-radius: 10px;
+                    padding: 0.66rem 0.73rem;
+                    font-size: 0.88rem;
+                    flex-shrink: 0;
+                `;
+
+                el.innerHTML = `
+                    <div style="font-size:0.7rem; color:var(--blue); margin-bottom:0.2rem;">${iconsList[kind] || '💬'} ${whoAmI} · ${timeToString(Date.now())}</div>
+                    <div style="color:var(--text);">${escHtml(text)}</div>
+                `;
+
+                msg_area.appendChild(el);
+                msg_area.scrollTop = msg_area.scrollHeight;
             }
 
             document.querySelectorAll(".cue-btn").forEach(btn => {
@@ -510,13 +604,50 @@
             }
             
             let bcastTimer;
-            function showBroadcast(text) {
+            function showBroadcast(text, ts) {
                 const banner = document.getElementById("bcast-banner");
                 document.getElementById("bcast-text").textContent = text;
                 banner.style.display = "block";
                 clearTimeout(bcastTimer);
                 bcastTimer = setTimeout(() => { banner.style.display = "none"; }, 7300);
+
+                const msg_area = document.getElementById("msg-area");
+                const empty = document.getElementById("empty-log");
+                if(empty) empty.remove();
+
+                const el = document.createElement("div");
+                el.style.cssText = `
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-left: 3px solid var(--blue);
+                    border-radius: 10px;
+                    padding: 0.66rem 0.73rem;
+                    font-size: 0.88rem;
+                    flex-shrink: 0;
+                `;
+
+                el.innerHTML = `
+                    <div style="font-size:0.7rem; color:var(--blue); margin-bottom:0.2rem;">📢 音控组 · ${timeToString(ts || Date.now())}</div>
+                    <div style="color:var(--text);">${escHtml(text)}</div>
+                `;
+
+                msg_area.appendChild(el);
+                msg_area.scrollTop = msg_area.scrollHeight;
             }
+
+            function timeToString(ts) {
+                return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            }
+
+            function escHtml(s) {
+                return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            }
+
+            function clearLog() {
+                document.getElementById("msg-area").innerHTML = `<div class="empty-log" id="empty-log">等待消息中...</div>`;
+            }
+
+            document.getElementById("clear-history").addEventListener("click", clearLog);
         </script>
     </div>
 </body>
