@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CECFO | 敬拜团内通系统</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+
+        :root {
+            --bg: #080A0F;
+            --surface: #0F1118;
+            --border: #1E2230;
+            --surface2: #161A24;
+            --text: #D8DAE8;
+            --muted: #4A4F6A;
+            --blue: #5B8FFF;
+            --gold: #E8C97A;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: "ZCOOL XiaoWei";
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding: 2rem;
+        }
+
+        .title {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--gold), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: var(--muted);
+            text-align: center;
+            margin-top: -1.5rem;
+        }
+
+        .cards {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            display: block;
+            text-decoration: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 2rem 2.5rem;
+            width: 200px;
+            text-align: center;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+
+        .card:hover { transform: translateY(-4px); }
+        .card.worship:hover { border-color: var(--gold); box-shadow: 0 12px 40px rgba(232,201,122,0.1); }
+        .card.mix:hover     { border-color: var(--blue); box-shadow: 0 12px 40px rgba(91,143,255,0.1); }
+
+        .card-icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+
+        .card-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.4rem;
+        }
+        .card.worship .card-title { color: var(--gold); }
+        .card.mix .card-title     { color: var(--blue); }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">CECFO 敬拜团内通系统</div>
+    <div class="subtitle">请选择你的角色进入</div>
+    <div class="cards">
+        <a href="/stage" class="card worship">
+            <div class="card-icon">🎤</div>
+            <div class="card-title">敬拜团</div>
+            <div class="card-desc">发送快捷消息给音控组</div>
+        </a>
+        <a href="/dashboard" class="card mix">
+            <div class="card-icon">🎚️</div>
+            <div class="card-title">音控组</div>
+            <div class="card-desc">接收消息并发送全体通知</div>
+        </a>
+    </div>
+</body>
+</html>

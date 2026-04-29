@@ -14,7 +14,8 @@ let user_count = 0; // I can't use clients.length because they can disconnect.
 // ─── HTTP Server ─────────────────────────────────────────────
 const server = http.createServer((req, res) => {
     const urlMap = {
-        "/": "cecfo-worship_tool.html",
+        "/": "index.html",
+        "/stage": "cecfo-worship_tool.html",
         "/dashboard": "cecfo-worship_dashboard.html"
     };
 

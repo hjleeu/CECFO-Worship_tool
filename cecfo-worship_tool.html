@@ -39,7 +39,8 @@
         header {
             position: relative;
             z-index: 1;
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
             justify-content: space-between;
             padding: 0.88rem 1.5rem;
@@ -53,6 +54,37 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        .header-center {
+            color: var(--gold);
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            padding: 0.37rem;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .fullscreen-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--muted);
+            padding: 0.15rem 0.5rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .fullscreen-btn:hover {
+            border-color: var(--text);
+            color: var(--text);
         }
 
         .status-dot {
@@ -386,7 +418,9 @@
 <body>
     <header>
         <div class="header-left">CECFO | 敬拜团内通系统</div>
-        <div>
+        <div class="header-center" id="header-clock"></div>
+        <div class="header-right">
+            <button class="fullscreen-btn" id="fullscreen-btn">全屏 ⛶</button>
             <span class="status-dot" id="status-dot"></span>
             <span class="status-label" id="status-label">离线</span>
         </div>
@@ -484,171 +518,193 @@
         </div>
 
         <div class="flash" id="flash">发送成功 ✓</div>
-
-        <script>
-            const iconsList = {
-                more_monitor: '🎧',
-                vol_up:'🔊',
-                vol_down:'🔉',
-                ready:'✅',
-                issue:'⚠️',
-                custom:'💬',
-                broadcast:'📢'
-            };
-            let ws, whoAmI = "";
-            let selected = "";
-
-            document.querySelectorAll(".preset-btn").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("selected"));
-                    btn.classList.add("selected");
-                    selected = btn.dataset.name;
-                });
-            });
-
-            document.getElementById("join-btn").addEventListener("click", () => {
-                whoAmI = selected;
-                if(!whoAmI) {
-                    alert("请选择你的角色");
-                    return;
-                }
-                connect();
-            });
-
-            function connect() {
-                const proto = location.protocol === "https:" ? "wss:" : "ws:";
-                ws = new WebSocket(`${proto}//${location.host}`);
-                ws.onopen = () => {
-                    ws.send(JSON.stringify({ type: "register", name: whoAmI, role: "client" }));
-                    setStatus(true);
-                    document.getElementById("setup").style.display = "none";
-                    document.getElementById("app").style.display = "flex";
-                    document.getElementById("badge").textContent = whoAmI;
-                };
-
-                ws.onclose = () => {
-                    setStatus(false);
-                };
-
-                ws.onerror = () => {
-                    ws.close();
-                    setTimeout(connect, 3000);
-                };
-
-                ws.onmessage = e => {
-                    const msg = JSON.parse(e.data);
-                    if(msg.type === "broadcast") showBroadcast(msg.text, msg.ts);
-                    if(msg.type === "clear_history") clearLog();
-                };
-            }
-
-            function setStatus(ok) {
-                document.getElementById("status-dot").classList.toggle("online", ok);
-                document.getElementById("status-label").textContent = ok ? "在线" : "离线";
-            }
-
-            function sendMsg(kind, text) {
-                if(!ws || ws.readyState !== 1) return;
-                ws.send(JSON.stringify({ type: "worship_msg", kind, text }));
-                appendClientMsg(kind, text);
-                flashSent();
-            }
-
-            function appendClientMsg(kind, text) {
-                const msg_area = document.getElementById("msg-area");
-                const empty = document.getElementById("empty-log");
-                if(empty) empty.remove();
-
-                const el = document.createElement("div");
-                el.style.cssText = `
-                    background: var(--surface);
-                    border: 1px solid var(--border);
-                    border-left: 3px solid var(--gold);
-                    border-radius: 10px;
-                    padding: 0.66rem 0.73rem;
-                    font-size: 0.88rem;
-                    flex-shrink: 0;
-                `;
-
-                el.innerHTML = `
-                    <div style="font-size:0.7rem; color:var(--blue); margin-bottom:0.2rem;">${iconsList[kind] || '💬'} ${whoAmI} · ${timeToString(Date.now())}</div>
-                    <div style="color:var(--text);">${escHtml(text)}</div>
-                `;
-
-                msg_area.appendChild(el);
-                msg_area.scrollTop = msg_area.scrollHeight;
-            }
-
-            document.querySelectorAll(".cue-btn").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    sendMsg(btn.dataset.kind, btn.dataset.msg);
-                });
-            });
-
-            document.getElementById("custom-send").addEventListener("click", sendCustom);
-            document.getElementById("custom-msg").addEventListener("keydown", e => {
-                if(e.key === "Enter") sendCustom();
-            });
-
-            function sendCustom() {
-                const t = document.getElementById("custom-msg").value.trim();
-                if(!t) return;
-                sendMsg("custom", t);
-                document.getElementById("custom-msg").value = "";
-            }
-
-            function flashSent() {
-                const el = document.getElementById("flash");
-                el.classList.add("show");
-                setTimeout(() => el.classList.remove("show"), 1500);
-            }
-            
-            let bcastTimer;
-            function showBroadcast(text, ts) {
-                const banner = document.getElementById("bcast-banner");
-                document.getElementById("bcast-text").textContent = text;
-                banner.style.display = "block";
-                clearTimeout(bcastTimer);
-                bcastTimer = setTimeout(() => { banner.style.display = "none"; }, 7300);
-
-                const msg_area = document.getElementById("msg-area");
-                const empty = document.getElementById("empty-log");
-                if(empty) empty.remove();
-
-                const el = document.createElement("div");
-                el.style.cssText = `
-                    background: var(--surface);
-                    border: 1px solid var(--border);
-                    border-left: 3px solid var(--blue);
-                    border-radius: 10px;
-                    padding: 0.66rem 0.73rem;
-                    font-size: 0.88rem;
-                    flex-shrink: 0;
-                `;
-
-                el.innerHTML = `
-                    <div style="font-size:0.7rem; color:var(--blue); margin-bottom:0.2rem;">📢 音控组 · ${timeToString(ts || Date.now())}</div>
-                    <div style="color:var(--text);">${escHtml(text)}</div>
-                `;
-
-                msg_area.appendChild(el);
-                msg_area.scrollTop = msg_area.scrollHeight;
-            }
-
-            function timeToString(ts) {
-                return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            }
-
-            function escHtml(s) {
-                return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            }
-
-            function clearLog() {
-                document.getElementById("msg-area").innerHTML = `<div class="empty-log" id="empty-log">等待消息中...</div>`;
-            }
-
-            document.getElementById("clear-history").addEventListener("click", clearLog);
-        </script>
     </div>
+    <script>
+        const iconsList = {
+            more_monitor: '🎧',
+            vol_up:'🔊',
+            vol_down:'🔉',
+            ready:'✅',
+            issue:'⚠️',
+            custom:'💬',
+            broadcast:'📢'
+        };
+        let ws, whoAmI = "";
+        let selected = "";
+
+        document.querySelectorAll(".preset-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("selected"));
+                btn.classList.add("selected");
+                selected = btn.dataset.name;
+            });
+        });
+
+        document.getElementById("join-btn").addEventListener("click", () => {
+            whoAmI = selected;
+            if(!whoAmI) {
+                alert("请选择你的角色");
+                return;
+            }
+            connect();
+        });
+
+        function connect() {
+            const proto = location.protocol === "https:" ? "wss:" : "ws:";
+            ws = new WebSocket(`${proto}//${location.host}`);
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "register", name: whoAmI, role: "client" }));
+                setStatus(true);
+                document.getElementById("setup").style.display = "none";
+                document.getElementById("app").style.display = "flex";
+                document.getElementById("badge").textContent = whoAmI;
+            };
+
+            ws.onclose = () => {
+                setStatus(false);
+            };
+
+            ws.onerror = () => {
+                ws.close();
+                setTimeout(connect, 3000);
+            };
+
+            ws.onmessage = e => {
+                const msg = JSON.parse(e.data);
+                if(msg.type === "broadcast") showBroadcast(msg.text, msg.ts);
+                if(msg.type === "clear_history") clearLog();
+            };
+        }
+
+        function setStatus(ok) {
+            document.getElementById("status-dot").classList.toggle("online", ok);
+            document.getElementById("status-label").textContent = ok ? "在线" : "离线";
+        }
+
+        function sendMsg(kind, text) {
+            if(!ws || ws.readyState !== 1) return;
+            ws.send(JSON.stringify({ type: "worship_msg", kind, text }));
+            appendClientMsg(kind, text);
+            flashSent();
+        }
+
+        function appendClientMsg(kind, text) {
+            const msg_area = document.getElementById("msg-area");
+            const empty = document.getElementById("empty-log");
+            if(empty) empty.remove();
+
+            const el = document.createElement("div");
+            el.style.cssText = `
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--gold);
+                border-radius: 10px;
+                padding: 0.66rem 0.73rem;
+                font-size: 0.88rem;
+                flex-shrink: 0;
+            `;
+
+            el.innerHTML = `
+                <div style="font-size:0.7rem; color:var(--blue); margin-bottom:0.2rem;">${iconsList[kind] || '💬'} ${whoAmI} · ${timeToString(Date.now())}</div>
+                <div style="color:var(--text);">${escHtml(text)}</div>
+            `;
+
+            msg_area.appendChild(el);
+            msg_area.scrollTop = msg_area.scrollHeight;
+        }
+
+        document.querySelectorAll(".cue-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                sendMsg(btn.dataset.kind, btn.dataset.msg);
+            });
+        });
+
+        document.getElementById("custom-send").addEventListener("click", sendCustom);
+        document.getElementById("custom-msg").addEventListener("keydown", e => {
+            if(e.key === "Enter") sendCustom();
+        });
+
+        function sendCustom() {
+            const t = document.getElementById("custom-msg").value.trim();
+            if(!t) return;
+            sendMsg("custom", t);
+            document.getElementById("custom-msg").value = "";
+        }
+
+        function flashSent() {
+            const el = document.getElementById("flash");
+            el.classList.add("show");
+            setTimeout(() => el.classList.remove("show"), 1500);
+        }
+        
+        let bcastTimer;
+        function showBroadcast(text, ts) {
+            const banner = document.getElementById("bcast-banner");
+            document.getElementById("bcast-text").textContent = text;
+            banner.style.display = "block";
+            clearTimeout(bcastTimer);
+            bcastTimer = setTimeout(() => { banner.style.display = "none"; }, 7300);
+
+            const msg_area = document.getElementById("msg-area");
+            const empty = document.getElementById("empty-log");
+            if(empty) empty.remove();
+
+            const el = document.createElement("div");
+            el.style.cssText = `
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--blue);
+                border-radius: 10px;
+                padding: 0.66rem 0.73rem;
+                font-size: 0.88rem;
+                flex-shrink: 0;
+            `;
+
+            el.innerHTML = `
+                <div style="font-size:0.7rem; color:var(--blue); margin-bottom:0.2rem;">📢 音控组 · ${timeToString(ts || Date.now())}</div>
+                <div style="color:var(--text);">${escHtml(text)}</div>
+            `;
+
+            msg_area.appendChild(el);
+            msg_area.scrollTop = msg_area.scrollHeight;
+        }
+
+        function timeToString(ts) {
+            return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function clearLog() {
+            document.getElementById("msg-area").innerHTML = `<div class="empty-log" id="empty-log">等待消息中...</div>`;
+        }
+
+        document.getElementById("clear-history").addEventListener("click", clearLog);
+
+        function updateClock() {
+            document.getElementById("header-clock").textContent =
+                new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        document.getElementById("fullscreen-btn").addEventListener("click", () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                document.getElementById("fullscreen-btn").textContent = "退出全屏 ✕";
+            } else {
+                document.exitFullscreen();
+                document.getElementById("fullscreen-btn").textContent = "全屏 ⛶";
+            }
+        });
+
+        document.addEventListener("fullscreenchange", () => {
+            if (!document.fullscreenElement)
+                document.getElementById("fullscreen-btn").textContent = "全屏 ⛶";
+        });
+    </script>
 </body>
 </html>
