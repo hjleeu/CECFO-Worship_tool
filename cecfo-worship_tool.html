@@ -193,6 +193,13 @@
             transform: translateY(0);
         }
 
+        .app-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+        }
+
         #app {
             position: relative;
             z-index: 1;
@@ -203,6 +210,7 @@
             gap: 1.5rem;
             max-width: 520px;
             margin: 0 auto;
+            overflow-y: auto;
         }
 
         .badge {
@@ -225,6 +233,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 0.73rem;
+            text-wrap-mode: nowrap;
         }
 
         .cue-btn {
@@ -345,16 +354,19 @@
 
         .log-area {
             background: var(--surface2);
-            padding: 0.73rem;
-            display: flex;
+            padding: 1.5rem;
+            display: none;
             flex-direction: column;
             gap: 0.37rem;
             border-radius: 7px;
+            flex-shrink: 0;
+            margin: 1.5rem;
+            min-width: 50%;
         }
 
         .msg-area {
+            flex: 1;
             overflow-y: auto;
-            max-height: 200px;
             display: flex;
             flex-direction: column;
             gap: 0.37rem;
@@ -384,7 +396,7 @@
             background: none;
             border: none;
             color: var(--muted);
-            font-size: 0.66rem;
+            font-size: 0.88rem;
             cursor: pointer;
             align-self: flex-end;
             padding: 0;
@@ -413,6 +425,23 @@
         }
 
         .flash.show { opacity: 1; }
+
+        @media (max-width: 600px) {
+            .app-wrapper {
+                flex-direction: column;
+            }
+
+            #app {
+                max-width: 100%;
+                overflow-y: unset;
+            }
+
+            .log-area {
+                width: auto;
+                margin-top: 0;
+                min-height: 200px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -444,80 +473,81 @@
             <button class="btn-primary" id="join-btn">加入</button>
         </div> 
     </div>
-
-    <div id="app">
-        <div class="bcast-banner" id="bcast-banner">
-            <div class="bcast-label">📢 音控组</div>
-            <div class="bcast-text" id="bcast-text"></div>
-        </div>
-
-        <div>
-            <div class="badge" id="badge">未知</div>
-        </div>
-
-        <div>
-            <div class="section-label">快捷消息</div>
-            <div class="cue-grid">
-                <button class="cue-btn" data-kind="more_monitor" data-msg="耳返多点">
-                    <span class="icon">🎧</span>
-                    <div>
-                        <div class="cue-label">耳返多点</div>
-                        <div class="cue-desc">耳返整体声音太小听不清。</div>
-                    </div>
-                </button>
-                <button class="cue-btn" data-kind="vol_up" data-msg="多点自己">
-                    <span class="icon">🔊</span>
-                    <div>
-                        <div class="cue-label">多点自己</div>
-                        <div class="cue-desc">耳返里自己声音太小听不清。</div>
-                    </div>
-                </button>
-                <button class="cue-btn" data-kind="vol_down" data-msg="少点自己">
-                    <span class="icon">🔉</span>
-                    <div>
-                        <div class="cue-label">少点自己</div>
-                        <div class="cue-desc">耳返里自己声音太大了。</div>
-                    </div>
-                </button>
-                <button class="cue-btn" data-kind="vol_up" data-msg="琴声多点">
-                    <span class="icon">🎹</span>
-                    <div>
-                        <div class="cue-label">琴声多点</div>
-                        <div class="cue-desc">耳返里琴声音太小听不清。</div>
-                    </div>
-                </button>
-                <button class="cue-btn" data-kind="vol_down" data-msg="琴声少点">
-                    <span class="icon">🎹</span>
-                    <div>
-                        <div class="cue-label">琴声少点</div>
-                        <div class="cue-desc">耳返里琴声音太大了。</div>
-                    </div>
-                </button>
-                <button class="cue-btn" data-kind="issue" data-msg="设备故障">
-                    <span class="icon">⚠️</span>
-                    <div>
-                        <div class="cue-label">设备故障</div>
-                        <div class="cue-desc">设备故障需要帮忙。</div>
-                    </div>
-                </button>
+    <div class="app-wrapper">
+            <div id="app">
+            <div class="bcast-banner" id="bcast-banner">
+                <div class="bcast-label">📢 音控组</div>
+                <div class="bcast-text" id="bcast-text"></div>
             </div>
-        </div>
 
-        <div>
-            <div class="section-label">💬 自定义消息</div>
-            <div class="custom-msg-area">
-                <input type="text" id="custom-msg" placeholder="自定义消息..." maxlength="120">
-                <button id="custom-send">➤</button>
+            <div>
+                <div class="badge" id="badge">未知</div>
             </div>
+
+            <div>
+                <div class="section-label">快捷消息</div>
+                <div class="cue-grid">
+                    <button class="cue-btn" data-kind="more_monitor" data-msg="耳返多点">
+                        <span class="icon">🎧</span>
+                        <div>
+                            <div class="cue-label">耳返多点</div>
+                            <div class="cue-desc">耳返整体声音太小听不清。</div>
+                        </div>
+                    </button>
+                    <button class="cue-btn" data-kind="vol_up" data-msg="多点自己">
+                        <span class="icon">🔊</span>
+                        <div>
+                            <div class="cue-label">多点自己</div>
+                            <div class="cue-desc">耳返里自己声音太小听不清。</div>
+                        </div>
+                    </button>
+                    <button class="cue-btn" data-kind="vol_down" data-msg="少点自己">
+                        <span class="icon">🔉</span>
+                        <div>
+                            <div class="cue-label">少点自己</div>
+                            <div class="cue-desc">耳返里自己声音太大了。</div>
+                        </div>
+                    </button>
+                    <button class="cue-btn" data-kind="vol_up" data-msg="琴声多点">
+                        <span class="icon">🎹</span>
+                        <div>
+                            <div class="cue-label">琴声多点</div>
+                            <div class="cue-desc">耳返里琴声音太小听不清。</div>
+                        </div>
+                    </button>
+                    <button class="cue-btn" data-kind="vol_down" data-msg="琴声少点">
+                        <span class="icon">🎹</span>
+                        <div>
+                            <div class="cue-label">琴声少点</div>
+                            <div class="cue-desc">耳返里琴声音太大了。</div>
+                        </div>
+                    </button>
+                    <button class="cue-btn" data-kind="issue" data-msg="设备故障">
+                        <span class="icon">⚠️</span>
+                        <div>
+                            <div class="cue-label">设备故障</div>
+                            <div class="cue-desc">设备故障需要帮忙。</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-label">💬 自定义消息</div>
+                <div class="custom-msg-area">
+                    <input type="text" id="custom-msg" placeholder="自定义消息..." maxlength="120">
+                    <button id="custom-send">➤</button>
+                </div>
+            </div>
+
+            <div class="flash" id="flash">发送成功 ✓</div>
         </div>
-        <div class="log-area">
+        <div class="log-area" id="log-area">
             <button id="clear-history">🗑 清空</button>
             <div class="msg-area" id="msg-area">
                 <div class="empty-log" id="empty-log">等待消息中...</div>
             </div>
         </div>
-
-        <div class="flash" id="flash">发送成功 ✓</div>
     </div>
     <script>
         const iconsList = {
@@ -557,6 +587,7 @@
                 setStatus(true);
                 document.getElementById("setup").style.display = "none";
                 document.getElementById("app").style.display = "flex";
+                document.getElementById("log-area").style.display = "flex";
                 document.getElementById("badge").textContent = whoAmI;
             };
 
