@@ -60,9 +60,7 @@ wss.on("connection", (ws) => {
         broadcastRoster();
     });
 
-    ws.on("error", (err) => {
-
-    });
+    ws.on("error", (err) => {  });
 });
 
 function handleMessage(client, msg) {

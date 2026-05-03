@@ -699,8 +699,11 @@
         });
 
         function updateClock() {
-            document.getElementById("header-clock").textContent =
-                new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            let now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            document.getElementById("header-clock").textContent = now;
+
+            /* Clear log at midnight for all the devices. */
+            if(now === "00:00:00") ws.send(JSON.stringify({ type: "clear_history_all" }));
         }
 
         updateClock();
