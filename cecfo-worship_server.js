@@ -44,6 +44,15 @@ wss.on("connection", (ws) => {
     const client = { id, ws, name: "unknown", role: "unknown" };
     clients.set(id, client);
 
+    /* Keep the system alive by sending a ping pong message every 30s. */
+    const pingInterval = setInterval(() => {
+        if(ws.readyState === ws.OPEN) ws.ping();
+        else clearInterval(pingInterval);
+    }, 3000);
+
+    ws.on("pong", () => {});
+
+
     ws.on("message", (data) => {
         let msg;
         try {
@@ -56,11 +65,14 @@ wss.on("connection", (ws) => {
     });
 
     ws.on("close", () => {
+        clearInterval(pingInterval);
         clients.delete(id);
         broadcastRoster();
     });
 
-    ws.on("error", (err) => {  });
+    ws.on("error", (err) => {
+        clearInterval(pingInterval);
+    });
 });
 
 function handleMessage(client, msg) {
@@ -99,6 +111,8 @@ function handleMessage(client, msg) {
             msgHistory = [];
             forEachRole("dashboard", (d) => send(d.ws, { type: "history", messages: [] }));
             forEachRole("client", (c) => send(c.ws, { type: "clear_history" }));
+            break;
+        case "ping":
             break;
     }
 }

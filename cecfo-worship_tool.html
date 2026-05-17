@@ -582,9 +582,17 @@
         function connect() {
             const proto = location.protocol === "https:" ? "wss:" : "ws:";
             ws = new WebSocket(`${proto}//${location.host}`);
+
+            let pingInterval;
+
             ws.onopen = () => {
                 ws.send(JSON.stringify({ type: "register", name: whoAmI, role: "client" }));
                 setStatus(true);
+
+                pingInterval = setInterval(() => {
+                    if(ws.readyState === 1) ws.send(JSON.stringify({ type: "ping" }));
+                }, 25000);
+
                 document.getElementById("setup").style.display = "none";
                 document.getElementById("app").style.display = "flex";
                 document.getElementById("log-area").style.display = "flex";
@@ -592,10 +600,12 @@
             };
 
             ws.onclose = () => {
+                clearInterval(pingInterval);
                 setStatus(false);
             };
 
             ws.onerror = () => {
+                clearInterval(pingInterval);
                 ws.close();
                 setTimeout(connect, 3000);
             };
