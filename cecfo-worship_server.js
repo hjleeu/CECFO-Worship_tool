@@ -9,13 +9,14 @@ const PORT = 1314;
 
 const clients = new Map(); // Worship team. -> { id, { ws, name, role } }
 let msgHistory = []; // { from, text, ts }
+let drawHistory = [];
 let user_count = 0; // I can't use clients.length because they can disconnect.
 
 // ─── HTTP Server ─────────────────────────────────────────────
 const server = http.createServer((req, res) => {
     const urlMap = {
         "/": "index.html",
-        "/stage": "cecfo-worship_tool.html",
+        "/stage": "cecfo-worship_team.html",
         "/dashboard": "cecfo-worship_dashboard.html"
     };
 
@@ -81,6 +82,7 @@ function handleMessage(client, msg) {
             client.name = msg.name || "unknown";
             client.role = msg.role || "client";
             if(client.role === "dashboard") send(client.ws, { type: "history", messages: msgHistory });
+            if(client.role === "client") send(client.ws, { type: "draw_history", strokes: drawHistory });
             broadcastRoster();
             break;
 
@@ -114,6 +116,30 @@ function handleMessage(client, msg) {
             break;
         case "ping":
             break;
+        case "clear_sheet": {
+            drawHistory = drawHistory.filter(s => s.type !== "draw_stroke" || s.sheetIndex !== msg.sheetIndex);
+            drawHistory.push(msg); // keep the clear event itself? no — just remove strokes
+            drawHistory = drawHistory.filter(s => !(s.type === "draw_stroke" && s.sheetIndex === msg.sheetIndex));
+            for (const [, c] of clients) {
+                if (c.id !== client.id) send(c.ws, msg);
+            }
+            break;
+        }
+        case "clear_all_sheet": {
+            drawHistory = []; // wipe everything
+            for (const [, c] of clients) {
+                if (c.id !== client.id) send(c.ws, msg);
+            }
+            break;
+        }
+        case "draw_stroke": {
+            drawHistory.push(msg);
+            if (drawHistory.length > 2000) drawHistory.shift();
+            for (const [, c] of clients) {
+                if (c.id !== client.id) send(c.ws, msg);
+            }
+            break;
+        }
     }
 }
 

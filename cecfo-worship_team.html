@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CECFO | 敬拜团</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&family=ZCOOL+XiaoWei&display=swap');
+
+        :root {
+            --bg: #080A0F;
+            --surface: #0F1118;
+            --surface2: #161A24;
+            --border: #1E2230;
+            --border2: #2A2F3E;
+            --text: #D8DAE8;
+            --muted: #4A4F6A;
+            --muted2: #9BA2BF;
+            --online: #5AB87A;
+            --offline: #E05A5A;
+            --gold: #E8C97A;
+            --gold2: #C9A948;
+            --blue: #5B8FFF;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            height: 100vh;
+            width: 100vw;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            font-family: "Noto Serif SC", serif;
+            overflow: hidden;
+        }
+
+        /* —————————————— Scrollbar. ———————————————————————————————————————— */
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 7px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.66rem 0.88rem;
+            cursor: default;
+            user-select: none;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .header-left {
+            font-size: 1.66rem;
+            background: linear-gradient(135deg, var(--gold) 0%, #F3DA9F 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.37rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 0.37rem 0.73rem;
+            border-radius: 7px;
+        }
+
+        .status-dot {
+            width: 0.73rem;
+            height: 0.73rem;
+            border-radius: 50%;
+            background: var(--offline);
+            transition: background 0.37s;
+            flex-shrink: 0;
+        }
+
+        .status-dot.online {
+            background: var(--online);
+            box-shadow: 0 0 7px var(--online);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(90, 184, 122, 0.5); }
+            50% { box-shadow: 0 0 0 7px rgba(90, 184, 122, 0); }
+        }
+
+        .status-label {
+            font-size: 0.88rem;
+            color: var(--muted2);
+        }
+
+        /* —————————————— Role panel. ———————————————————————————————————————— */
+        #role-panel {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.37s ease, visibility 0.37s;
+        }
+
+        #role-panel.hide {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .role-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 1.88rem;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .role-card h2 {
+            font-size: 1.88rem;
+            color: var(--gold);
+            margin-bottom: 0.37rem;
+        }
+
+        .role-card span {
+            font-size: 0.88rem;
+            color: var(--muted2);
+            margin-bottom: 1.66rem;
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.66rem;
+            margin-bottom: 1.66rem;
+        }
+
+        .role-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 0.73rem 0.66rem;
+            color: var(--text);
+            font-size: 0.99rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: "Noto Serif SC", serif;
+        }
+
+        .role-btn:hover { background: var(--gold2); }
+
+        .role-btn.selected {
+            background: var(--gold);
+            color: var(--bg);
+            border-color: var(--gold);
+        }
+
+        #connect-btn {
+            width: 100%;
+            background: var(--gold);
+            border: none;
+            border-radius: 7px;
+            padding: 0.88rem;
+            font-size: 0.99rem;
+            color: var(--bg);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: "Noto Serif SC", serif;
+        }
+
+        #connect-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        #connect-btn:active { transform: translateY(0); }
+        #connect-btn:disabled { opacity: 0.5s; cursor: not-allowed; transform: none; }
+
+        .content-area {
+            flex: 1;
+            display: none;
+            flex-direction: row;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .left-main {
+            min-height: 0;
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0.66rem;
+            gap: 0.66rem;
+        }
+
+        .sheet-carousel {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sheets-track {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+
+        .sheet {
+            flex: 0 0 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #060810;
+        }
+
+        .sheet img {
+            max-height: 90%;
+            max-width: 96%;
+            object-fit: contain;
+            border-radius: 7px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .draw-canvas {
+            position: absolute;
+            cursor: crosshair;
+            border-radius: 7px;
+            background: transparent;
+            touch-action: none;
+        }
+
+        .sheet-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--surface2);
+            backdrop-filter: blur(7px);
+            border: 1px solid var(--border2);
+            border-radius: 50%;
+            width: 37px;
+            height: 37px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.15s;
+            z-index: 10;
+        }
+
+        .sheet-nav:hover { border-color: var(--gold); color: var(--gold); }
+        .sheet-nav.prev { left: 73px; }
+        .sheet-nav.next { right: 15px; }
+
+        .sheet-counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 0.37rem 0.73rem;
+            color: var(--muted2);
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .drawing-toolbar {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(12, 15, 22, 0.92);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border2);
+            border-radius: 73px;
+            padding: 0.37rem 0.73rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.52rem;
+            z-index: 20;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .draw-tool-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 0.37rem 0.73rem;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.73rem;
+            font-family: "Noto Serif SC", serif;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .draw-tool-btn:hover { border-color: var(--gold2); }
+        .draw-tool-btn.active { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+        .draw-tool-btn.draw-on { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+
+        .color-picker {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            flex-shrink: 0;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .color-picker input[type="color"] {
+            width: 200%;
+            height: 200%;
+            margin: -50%;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            position: absolute;
+        }
+
+        .color-picker { position: relative; }
+
+        .size-slider {
+            width: 52px;
+            cursor: pointer;
+            accent-color: var(--gold);
+        }
+
+        .toolbar-sep {
+            height: 1px;
+            width: 18px;
+            background: var(--border2);
+            flex-shrink: 0;
+        }
+
+        .chat-section {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .chat-header {
+            padding: 0.37rem 0.88rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.73rem;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        #clear-chat-btn {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 0.73rem;
+            cursor: pointer;
+            font-family: "Noto Serif SC", serif;
+            transition: color 0.15s;
+        }
+
+        #clear-chat-btn:hover { color: var(--offline); }
+
+        .log-area {
+            flex: 1;
+            overflow-y: auto;
+            gap: 0.37rem;
+            display: flex;
+            flex-direction: column;
+            padding: 0.66rem;
+        }
+
+        .empty-log {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 0.88rem;
+            text-align: center;
+        }
+
+        .msg-card {
+            background: var(--surface2);
+            border-left: 3px solid var(--gold);
+            border-radius: 7px;
+            padding: 0.66rem 0.73rem;
+            flex-shrink: 0;
+        }
+
+        .msg-card.broadcast { border-left-color: var(--blue); }
+        .msg-card.issue { border-left-color: var(--offline); }
+        .msg-card.ready { border-left-color: var(--online); }
+
+        .msg-meta {
+            font-size: 0.73rem;
+            color: var(--muted2);
+            margin-bottom: 0.37rem;
+            display: flex;
+            gap: 0.37rem;
+        }
+
+        .msg-text {
+            font-size: 0.88rem;
+            color: var(--text);
+            line-height: 1.37;
+        }
+
+        .custom-msg-area {
+            display: flex;
+            flex-direction: row;
+            gap: 0.37rem;
+            padding: 0.52rem 0.66rem;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .custom-msg-area input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 0.37rem 0.73rem;
+            font-size: 0.88rem;
+            color: var(--text);
+            font-family: "Noto Serif SC", serif;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .custom-msg-area input:focus { border-color: var(--gold2); }
+        .custom-msg-area input::placeholder { color: var(--muted); }
+
+        .custom-msg-area button {
+            background: var(--surface2);
+            color: var(--gold);
+            padding: 0 0.73rem;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.88rem;
+        }
+
+        .custom-msg-area button:hover { border-color: var(--gold); }
+
+        .sidebar-quick {
+            width: 66px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.66rem;
+            padding: 0.73rem 0.37rem;
+            overflow-y: auto;
+        }
+
+        .quick-btn {
+            font-size: 1.52rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            width: 52px;
+            height: 52px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            margin-bottom: 0.37rem;
+            flex-shrink: 0;
+            display: flex   ;
+        }
+
+        .quick-btn:hover { border-color: var(--gold); transform: translateY(-1px); }
+        .quick-btn:active { transform: translateY(0);}
+
+        #bcast-banner {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            top: 5.2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-left: 3px solid var(--blue);
+            border-radius: 7px;
+            padding: 0.66rem 1.37rem;
+            animation: slideDown 0.25s ease;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-7px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        #bcast-banner .bcast-from {
+            font-size: 0.66rem;
+            color: var(--blue);
+            margin-bottom: 0.18rem;
+        }
+
+        #bcast-banner .bcast-text {
+            font-size: 0.88rem;
+            color: var(--text);
+        }
+
+        @media (max-width: 600px) {
+            .drawing-toolbar { padding: 0.37rem 0.66rem; gap: 0.37rem; }
+            .draw-tool-btn { padding: 0.18rem 0.37rem; font-size: 0.66rem; }
+            .size-slider { width: 37px; }
+            .sidebar-quick { width: 52px; }
+            .quick-icon { width: 37px; height: 37px; font-size: 1.37rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <span>CECFO | WORSHIP</span>
+        </div>
+        <div class="header-right">
+            <span class="status-dot" id="status-dot"></span>
+            <span class="status-label" id="status-label">离线</span>
+        </div>
+    </div>
+    <div id="role-panel">
+        <div class="role-card">
+            <h2>请选择你的角色</h2>
+            <span>根据当天服事安排选择，方便音控组快速辨认。</span>
+            <div class="role-grid" id="role-grid"></div>
+            <button id="connect-btn">建立连接</button>
+        </div> 
+    </div>
+    <div class="content-area" id="content-area">
+        <div class="left-main">
+            <div class="sheet-carousel" id="sheet-carousel">
+                <div class="sheets-track" id="sheets-track">
+                    <div class="sheet" data-index="0">
+                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/mfG8LpSzx46zdAi?file=/&fileId=70831&x=1920&y=1080&a=true&etag=b24448df004aede317296133faddc608" alt="">
+                        <canvas class="draw-canvas"></canvas>
+                    </div>
+                    <div class="sheet" data-index="1">
+                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/a938TsAENTnHZkf?file=/&fileId=36373&x=1920&y=1080&a=true&etag=30a808890171f2c33d0b93b0ae8706e5" alt="">
+                        <canvas class="draw-canvas"></canvas>
+                    </div>
+                    <div class="sheet" data-index="2">
+                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/XzxgXr9Fr64ZZGB?file=/&fileId=70820&x=1920&y=1080&a=true&etag=0f09589476113913b4d338aaf7b8851f" alt="">
+                        <canvas class="draw-canvas"></canvas>
+                    </div>
+                    <div class="sheet" data-index="3">
+                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/R5Gz2RWbga393rz?file=/&fileId=65340&x=1920&y=1080&a=true&etag=2ae9f099a2fefeffb8870de3c100c3ac" alt="">
+                        <canvas class="draw-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="sheet-nav prev" id="sheet-nav-prev"><</div>
+                <div class="sheet-nav next" id="sheet-nav-next">></div>
+                <div class="sheet-counter" id="sheet-counter">1 / 4</div>
+
+                <div class="drawing-toolbar">
+                    <button class="draw-tool-btn draw-on" id="toggle-draw-btn">✏️ 绘图</button>
+                    <div class="toolbar-sep"></div>
+                    <button class="draw-tool-btn active" id="draw-pen-btn">笔</button>
+                    <button class="draw-tool-btn" id="draw-eraser-btn">橡皮</button>
+                    <div class="toolbar-sep"></div>
+                    <div class="color-picker" id="color-picker" style="background: #F3DA9F;">
+                        <input type="color" id="draw-color" value="#F3DA9F">
+                    </div>
+                    <input type="range" class="size-slider" id="brush-size" min="2" max="15" value="7">
+                    <div class="toolbar-sep"></div>
+                    <button class="draw-tool-btn" id="clear-sheet-btn">清当前页</button>
+                    <button class="draw-tool-btn" id="clear-all-sheet-btn">清全部页</button>
+                </div>
+
+            </div>
+            <div class="chat-section">
+                <div class="chat-header">
+                    <span>历史消息</span>
+                    <button id="clear-chat-btn">🗑 清空</button>
+                </div>
+                <div class="log-area" id="log-area">
+                    <div class="empty-log" id="empty-log">等待消息中...</div>
+                </div>
+                <div class="custom-msg-area">
+                    <input type="text" id="custom-msg" placeholder="自定义消息..." maxlength="150">
+                    <button id="custom-send">➤</button>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-quick">
+            <div class="quick-btn" data-kind="more_monitor" data-msg="耳返多点">🎧</div>
+            <div class="quick-btn" data-kind="vol_up" data-msg="多点自己">🔊</div>
+            <div class="quick-btn" data-kind="vol_down" data-msg="少点自己">🔉</div>
+            <div class="quick-btn" data-kind="ready" data-msg="我已预备好 ✅">✅</div>
+            <div class="quick-btn" data-kind="issue" data-msg="有设备问题 ⚠️">⚠️</div>
+        </div>
+    </div>
+
+    <div id="bcast-banner">
+        <div class="bcast-from">📢 音控组</div>
+        <div class="bcast-text" id="bcast-text"></div>
+    </div>
+
+    <script>
+        const ROLES = ["🎤 无线1号", "🎤 无线2号", "🎤 无线3号", "🎤 无线4号", "🎤 无线5号", "🎹 琴", "🥁 鼓", "🎸 吉他", "🎸 贝斯"];
+        const KIND_ICONS = {
+            more_monitor: '🎧',
+            vol_up:'🔊',
+            vol_down:'🔉',
+            ready:'✅',
+            issue:'⚠️',
+            custom:'💬',
+            broadcast:'📢'
+        };
+
+        // —————————————— State variables. ————————————————————————————————————————
+        let ws = null;
+        let whoAmI = "";
+        let selectedRole = "";
+        let pingTimer = null;
+        let currentSheetIndex = 0;
+        let drawingEnabled = true;
+        let activeTool = "pen";
+        let currentColor = "#FFD966";
+        let brushSize = 7;
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+        let drawings = [];
+        let bCastTimer = null;
+        let pendingDrawHistory = null;
+
+        // —————————————— DOM references. ————————————————————————————————————————
+        const rolePanel = document.getElementById("role-panel");
+        const contentArea = document.getElementById("content-area");
+        const statusDot = document.getElementById("status-dot");
+        const statusLabel = document.getElementById("status-label");
+        const sheetCarousel = document.getElementById("sheet-carousel");
+        const sheetsTrack = document.getElementById("sheets-track");
+        const sheets = document.querySelectorAll(".sheet");
+        const canvases = document.querySelectorAll(".draw-canvas");
+        const roleGrid = document.getElementById("role-grid");
+        const logArea = document.getElementById("log-area");
+        const customMsg = document.getElementById("custom-msg");
+
+        drawings = new Array(sheets.length).fill(null);
+
+        // —————————————— Helper functions. ————————————————————————————————————————
+        function escHtml(s) {
+            return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function timeToString() {
+            return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+
+        // —————————————— Status. ————————————————————————————————————————
+        function setStatus(ok) {
+            statusDot.classList.toggle("online", ok);
+            statusLabel.textContent = ok ? "在线" : "离线";
+        }
+
+        // —————————————— Role selector. ————————————————————————————————————————
+        function renderRoles() {
+            roleGrid.innerHTML = "";
+            ROLES.forEach(role => {
+                const btn = document.createElement("button");
+                btn.className = "role-btn";
+                btn.textContent = role;
+                btn.dataset.name = role;
+                btn.onclick = () => {
+                    document.querySelectorAll(".role-btn").forEach(b => b.classList.remove("selected"));
+                    btn.classList.add("selected");
+                    selectedRole = role;
+                };
+                roleGrid.appendChild(btn);
+            });
+        }
+
+        document.getElementById("connect-btn").addEventListener("click", async () => {
+            if(!selectedRole) { alert("请先选择今日服事角色"); return; }
+            whoAmI = selectedRole;
+            
+            const btn = document.getElementById("connect-btn");
+            btn.textContent = "连接中...";
+            btn.disabled = true;
+
+            try {
+                await connect();
+                rolePanel.classList.add("hide");
+                contentArea.style.display = "flex";
+                initSheetCarousel();
+                setupDrawingUI();
+                setTimeout(() => appendMsg("系统", `欢迎 ${whoAmI} 加入`, "broadcast"), 200);
+            } catch { alert("无法连接服务器，请稍后再试"); }
+
+            btn.textContent = "建立连接";
+            btn.disabled = false;
+        });
+
+        // —————————————— WebSocket Connection. ————————————————————————————————————————
+        function connect() {
+            return new Promise((resolve, reject) => {
+                const proto = location.protocol === "https:" ? "wss:" : "ws:";
+                const socket = new WebSocket(`${proto}//${location.host}`);
+                let opened = false;
+
+                socket.onopen = () => {
+                    opened = true;
+                    ws = socket;
+                    socket.send(JSON.stringify({ type: "register", name: whoAmI, role: "client" }));
+                    setStatus(true);
+
+                    if(pingTimer) clearInterval(pingTimer);
+                    pingTimer = setInterval(() => {
+                        if(socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" }));
+                    }, 25000);
+                    resolve(socket);
+                };
+
+                socket.onmessage = e => {
+                    try {
+                        const msg = JSON.parse(e.data);
+                        handleMessage(msg);
+                    } catch {}
+                };
+
+                socket.onerror = () => { if(!opened) reject(); else setStatus(false); };
+
+                socket.onclose = () => {
+                    setStatus(false);
+                    if(pingTimer) clearInterval(pingTimer);
+
+                    if(contentArea.style.display === "flex") setTimeout(() => connect().catch(() => {}), 3000);
+                };
+            });
+        }
+
+        function handleMessage(msg) {
+            switch(msg.type) {
+                case "broadcast":
+                    showBroadCastBanner(msg.text);
+                    appendMsg(msg.from || "音控组", msg.text, "broadcast");
+                    break;
+                case "clear_history":
+                    clearChat();
+                    break;
+                case "draw_stroke":
+                    applyRemoteStroke(msg);
+                    break;
+                case "clear_sheet":
+                    applyRemoteClearSheet(msg.sheetIndex);
+                    appendMsg("系统", `第 ${msg.sheetIndex + 1} 页标注已清除`, "broadcast");
+                    break;
+                case "clear_all_sheet":
+                    applyRemoteClearAllSheet();
+                    appendMsg("系统", "全部标注已清除", "broadcast");
+                    break;
+                case "draw_history":
+                    if(contentArea.style.display === "flex") replayDrawHistory(msg.strokes);
+                    else pendingDrawHistory = msg.strokes;
+                    break;
+            }
+        }
+        
+
+        // —————————————— Send/Receive messages. ————————————————————————————————————————
+        function sendMsg(kind, text) {
+            if(!ws || ws.readyState !== WebSocket.OPEN) { appendMsg("系统", "未连接服务器", "broadcast"); return; }
+            ws.send(JSON.stringify({ type: "worship_msg", kind, text }));
+            appendMsg(whoAmI, text, kind);
+        }
+
+        
+
+        function appendMsg(sender, text, kind = "custom") {
+            const empty_log = document.getElementById("empty-log");
+
+            if(empty_log) empty_log.remove();
+
+            const msgCard = document.createElement("div");
+            msgCard.className = `msg-card ${kind}`;
+
+            msgCard.innerHTML = `
+                <div class="msg-meta">
+                    <span>${KIND_ICONS[kind] || '💬'}</span>
+                    <span>${escHtml(sender)}</span>
+                    <span>${timeToString()}</span>
+                </div>
+                <div class="msg-text">${escHtml(text)}</div>
+            `;
+
+            logArea.appendChild(msgCard);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function showBroadCastBanner(text) {
+            const banner = document.getElementById("bcast-banner");
+            document.getElementById("bcast-text").textContent = text;
+            banner.style.display = "block";
+            clearTimeout(bCastTimer);
+            bCastTimer = setTimeout(() => { banner.style.display = "none"; }, 7000);
+        }
+
+        function clearChat() {
+            logArea.innerHTML = `<div class="empty-log" id="empty-log">等待消息中...</div>`;
+        }
+
+        document.getElementById("custom-send").addEventListener("click", sendCustom);
+        customMsg.addEventListener("keypress", k => { if(k.key === "Enter") sendCustom(); });
+
+        function sendCustom() {
+            const t = customMsg.value.trim();
+            if(!t) return;
+
+            sendMsg("custom", t);
+            customMsg.value = "";
+        }
+
+        document.querySelectorAll(".quick-btn").forEach(btn => {
+            btn.onclick = () => sendMsg(btn.dataset.kind, btn.dataset.msg);
+        });
+
+        document.getElementById("clear-chat-btn").onclick = clearChat;
+
+        // —————————————— Sheet carousel ————————————————————————————————————————
+        function initSheetCarousel() {
+            const total = sheets.length;
+
+            function goTo(i) {
+                currentSheetIndex = (i + total) % total;
+                sheetsTrack.style.transform = `translateX(-${currentSheetIndex * 100}%)`;
+                document.getElementById("sheet-counter").textContent = `${currentSheetIndex + 1} / ${total}`;
+
+                setTimeout(() => resizeAllCanvases(), 260);
+            }
+
+            document.getElementById("sheet-nav-prev").onclick = () => goTo(currentSheetIndex - 1);
+            document.getElementById("sheet-nav-next").onclick = () => goTo(currentSheetIndex + 1);
+
+            sheetCarousel.addEventListener("wheel", e => {
+                if(!drawingEnabled) { e.preventDefault(); goTo(currentSheetIndex + (e.deltaY > 0 ? 1 : -1)); }
+            }, { passive: false });
+
+            let touchStartX = 0;
+            sheetCarousel.addEventListener("touchstart", e => { if(!drawingEnabled) touchStartX = e.touches[0].clientX; }, { passive: true });
+            sheetCarousel.addEventListener("touchend", e => {
+                if(!drawingEnabled) {
+                    const diff = touchStartX - e.changedTouches[0].clientX;
+                    if(Math.abs(diff) > 40) goTo(currentSheetIndex + (diff > 0 ? 1 : -1));
+                }
+            });
+
+            goTo(0);
+            window.addEventListener("resize", resizeAllCanvases);
+        }
+
+        // —————————————— Resize canvas. ————————————————————————————————————————
+        function resizeCanvas(canvas, img) {
+            if (!img.complete || img.naturalWidth === 0) {
+                img.onload = () => resizeCanvas(canvas, img);
+                return;
+            }
+
+            const imgRect = img.getBoundingClientRect();
+            const parentRect = canvas.parentElement.getBoundingClientRect();
+
+            canvas.style.width = imgRect.width + "px";
+            canvas.style.height = imgRect.height + "px";
+            canvas.style.left = (imgRect.left - parentRect.left) + "px";
+            canvas.style.top = (imgRect.top - parentRect.top) + "px";
+
+            const prev = drawings[parseInt(canvas.parentElement.dataset.index)];
+            canvas.width = imgRect.width;
+            canvas.height = imgRect.height;
+
+            if (prev) canvas.getContext("2d").putImageData(prev, 0, 0);
+        }
+
+        function resizeAllCanvases() {
+            sheets.forEach(sheet => {
+                const img = sheet.querySelector("img");
+                const canvas = sheet.querySelector(".draw-canvas");
+                if(img && canvas) resizeCanvas(canvas, img);
+            });
+        }
+
+        function saveCanvas(canvas) {
+            const idx = parseInt(canvas.parentElement.dataset.index);
+            drawings[idx] = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        // —————————————— Drawing. ————————————————————————————————————————
+        function drawLine(ctx, x1, y1, x2, y2, color, size, eraser) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            if(eraser) {
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+                ctx.lineWidth = size * 1.5;
+            } else {
+                ctx.globalCompositeOperation = "source-over";
+                ctx.strokeStyle = color;
+                ctx.lineWidth = size;
+            }
+
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function initCanvasEvents(canvas) {
+            const getCoords = e => {
+                const rect = canvas.getBoundingClientRect();
+                const sx = canvas.width / rect.width;
+                const sy = canvas.height / rect.height;
+                const src = e.touches ? e.touches[0] : e;
+
+                return {
+                    x: Math.min(Math.max(0, (src.clientX - rect.left) * sx), canvas.width),
+                    y: Math.min(Math.max(0, (src.clientY - rect.top) * sy), canvas.height)
+                };
+            };
+
+            const start = e => {
+                if(!drawingEnabled) return;
+                e.preventDefault();
+                isDrawing = true;
+
+                const { x, y } = getCoords(e);
+                lastX = x; lastY = y;
+
+                const ctx = canvas.getContext("2d");
+                ctx.beginPath();
+                if(activeTool === "eraser") {
+                    ctx.globalCompositeOperation = "destination-out";
+                    ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalCompositeOperation = "source-over";
+                } else {
+                    ctx.fillStyle = currentColor;
+                    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                saveCanvas(canvas);
+                sendStroke(x, y, x, y);
+            };
+
+            const move = e => {
+                if(!isDrawing || !drawingEnabled) return;
+                e.preventDefault();
+                const { x, y } = getCoords(e);
+                const ctx = canvas.getContext("2d");
+                drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, activeTool === "eraser");
+                sendStroke(lastX, lastY, x, y);
+                lastX = x; lastY = y;
+                saveCanvas(canvas);
+            };
+
+            const end = () => { isDrawing = false; };
+
+            canvas.addEventListener("mousedown", start);
+            canvas.addEventListener("mousemove", move);
+            canvas.addEventListener("mouseup", end);
+            canvas.addEventListener("mouseleave", end);
+            canvas.addEventListener("touchstart", start, { passive: false });
+            canvas.addEventListener("touchmove", move, { passive: false });
+            canvas.addEventListener("touchend", end);
+        }
+
+        function sendStroke(x1, y1, x2, y2) {
+            if(!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({
+                type: "draw_stroke",
+                sheetIndex: currentSheetIndex,
+                x1, y1, x2, y2,
+                color : currentColor,
+                size: brushSize,
+                isEraser: activeTool === "eraser"
+            }));
+        }
+
+        function applyRemoteStroke(msg) {
+            const canvas = canvases[msg.sheetIndex];
+            if(!canvas) return;
+            const ctx = canvas.getContext("2d");
+            drawLine(ctx, msg.x1, msg.y1, msg.x2, msg.y2, msg.color, msg.size, msg.isEraser);
+            saveCanvas(canvas);
+        }
+
+        function applyRemoteClearSheet(idx) {
+            const canvas = canvases[idx];
+            if(!canvas) return;
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            saveCanvas(canvas);
+        }
+
+        function applyRemoteClearAllSheet() {
+            canvases.forEach(c => {
+                c.getContext("2d").clearRect(0, 0, c.width, c.height);
+                saveCanvas(c);
+            });
+        }
+
+        function replayDrawHistory(strokes) {
+            const images = [...sheets].map(s => s.querySelector("img"));
+            const allLoaded = images.every(img => img.complete && img.naturalWidth > 0);
+
+            const replay = () => {
+                strokes.forEach(stroke => {
+                    if(stroke.type === "draw_stroke") applyRemoteStroke(stroke);
+                    else if(stroke.type === "clear_sheet") applyRemoteClearSheet(stroke.sheetIndex);
+                    else if(stroke.type === "clear_all_sheet") applyRemoteClearAllSheet();
+                });
+            };
+
+            if(allLoaded) {
+                requestAnimationFrame(replay);
+            } else {
+                let loaded = 0;
+                images.forEach(img => {
+                    if(img.complete && img.naturalWidth > 0) {
+                        loaded++;
+                        if(loaded === images.length) requestAnimationFrame(replay);
+                    } else {
+                        img.onload = () => {
+                            loaded++;
+                            if(loaded === images.length) requestAnimationFrame(replay);
+                        }
+                    }
+                });
+            }
+        }
+
+        // —————————————— Drawing UI ————————————————————————————————————————
+        function setupDrawingUI() {
+            const images = [...sheets].map(s => s.querySelector("img"));
+            const allLoaded = images.every(img => img.complete && img.naturalWidth > 0);
+
+            const init = () => {
+                sheets.forEach(sheet => {
+                    const img = sheet.querySelector("img");
+                    const canvas = sheet.querySelector(".draw-canvas");
+                    resizeCanvas(canvas, img);
+                    initCanvasEvents(canvas);
+                });
+
+                if(pendingDrawHistory) {
+                    replayDrawHistory(pendingDrawHistory);
+                    pendingDrawHistory = null;
+                }
+            };
+
+            if(allLoaded) {
+                requestAnimationFrame(init);
+            } else {
+                let loaded = 0;
+                images.forEach(img => {
+                    if(img.complete && img.naturalWidth > 0) {
+                        loaded++;
+                        if(loaded === images.length) requestAnimationFrame(init);
+                    } else {
+                        img.onload = () => {
+                            loaded++;
+                            if(loaded === images.length) requestAnimationFrame(init);
+                        }
+                    }
+                });
+            }
+
+            const toogleBtn = document.getElementById("toggle-draw-btn");
+            toogleBtn.onclick = () => {
+                drawingEnabled = !drawingEnabled;
+                toogleBtn.textContent = drawingEnabled ? "✏️ 绘图" : "🔒 绘图";
+                toogleBtn.classList.toggle("draw-on", drawingEnabled);
+                canvases.forEach(c => { c.style.pointerEvents = drawingEnabled ? "auto": "none"; });
+            };
+
+            const pen = document.getElementById("draw-pen-btn");
+            const eraser = document.getElementById("draw-eraser-btn");
+            pen.onclick = () => {
+                activeTool = "pen";
+                pen.classList.add("active");
+                eraser.classList.remove("active");
+            };
+            eraser.onclick = () => {
+                activeTool = "eraser";
+                eraser.classList.add("active");
+                pen.classList.remove("active");
+            };
+
+            const colorInput = document.getElementById("draw-color");
+            const colorDot = document.getElementById("color-picker");
+            colorDot.onclick = () => colorInput.click();
+            colorInput.oninput = e => {
+                currentColor = e.target.value;
+                colorDot.style.background = currentColor;
+            };
+
+            document.getElementById("brush-size").oninput = e => { brushSize = parseInt(e.target.value); };
+
+            document.getElementById("clear-sheet-btn").onclick = () => {
+                if(!confirm("清楚当前歌谱所有标注？")) return;
+                applyRemoteClearSheet(currentSheetIndex);
+
+                if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "clear_sheet", sheetIndex: currentSheetIndex }));
+                    appendMsg("系统", `第 ${currentSheetIndex + 1} 页标注已清除`, "broadcast");
+            };
+
+            document.getElementById("clear-all-sheet-btn").onclick = () => {
+                if (!confirm("清除全部歌谱标注？")) return;
+                applyRemoteClearAllSheet();
+                if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "clear_all_sheet" }));
+                appendMsg("系统", "全部标注已清除", "broadcast");
+            };
+        }
+
+        // —————————————— Init. ————————————————————————————————————————
+        renderRoles();
+    </script>
+</body>
+</html>
