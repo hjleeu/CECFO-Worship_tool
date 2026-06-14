@@ -208,7 +208,7 @@
         }
 
         .sheet-carousel {
-            flex: 1;
+            flex: 3;
             min-height: 0;
             overflow: hidden;
             position: relative;
@@ -270,13 +270,13 @@
         }
 
         .sheet-nav:hover { border-color: var(--gold); color: var(--gold); }
-        .sheet-nav.prev { left: 73px; }
+        .sheet-nav.prev { left: 15px; }
         .sheet-nav.next { right: 15px; }
 
         .sheet-counter {
             position: absolute;
             top: 10px;
-            left: 10px;
+            right: 10px;
             background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 7px;
@@ -288,20 +288,21 @@
 
         .drawing-toolbar {
             position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(12, 15, 22, 0.92);
             backdrop-filter: blur(15px);
             border: 1px solid var(--border2);
-            border-radius: 73px;
+            border-radius: 37px;
             padding: 0.37rem 0.73rem;
             display: flex;
-            flex-direction: column;
-            gap: 0.52rem;
+            flex-direction: row;
+            gap: 0.37rem;
             z-index: 20;
             align-items: center;
             justify-content: center;
+            white-space: nowrap;
         }
 
         .draw-tool-btn {
@@ -351,8 +352,8 @@
         }
 
         .toolbar-sep {
-            height: 1px;
-            width: 18px;
+            width: 1px;
+            height: 18px;
             background: var(--border2);
             flex-shrink: 0;
         }
@@ -539,11 +540,14 @@
         }
 
         @media (max-width: 600px) {
-            .drawing-toolbar { padding: 0.37rem 0.66rem; gap: 0.37rem; }
+            .drawing-toolbar { padding: 0.37rem 0.52rem; gap: 0.37rem; border-radius: 37px; top: 7px;}
             .draw-tool-btn { padding: 0.18rem 0.37rem; font-size: 0.66rem; }
             .size-slider { width: 37px; }
             .sidebar-quick { width: 52px; }
             .quick-icon { width: 37px; height: 37px; font-size: 1.37rem; }
+            .sheet-nav.prev { left: 7px; }
+            .sheet-nav.next { right: 7px; }
+            .color-picker { width: 18px; height: 18px; }
         }
     </style>
 </head>
@@ -570,19 +574,11 @@
             <div class="sheet-carousel" id="sheet-carousel">
                 <div class="sheets-track" id="sheets-track">
                     <div class="sheet" data-index="0">
-                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/mfG8LpSzx46zdAi?file=/&fileId=70831&x=1920&y=1080&a=true&etag=b24448df004aede317296133faddc608" alt="">
+                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/fNW58BtMdPktWYt?file=/&fileId=70852&x=1920&y=1080&a=true&etag=858374fae490e98843292b1672312ce2" alt="Sheet 1">
                         <canvas class="draw-canvas"></canvas>
                     </div>
                     <div class="sheet" data-index="1">
-                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/a938TsAENTnHZkf?file=/&fileId=36373&x=1920&y=1080&a=true&etag=30a808890171f2c33d0b93b0ae8706e5" alt="">
-                        <canvas class="draw-canvas"></canvas>
-                    </div>
-                    <div class="sheet" data-index="2">
-                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/XzxgXr9Fr64ZZGB?file=/&fileId=70820&x=1920&y=1080&a=true&etag=0f09589476113913b4d338aaf7b8851f" alt="">
-                        <canvas class="draw-canvas"></canvas>
-                    </div>
-                    <div class="sheet" data-index="3">
-                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/R5Gz2RWbga393rz?file=/&fileId=65340&x=1920&y=1080&a=true&etag=2ae9f099a2fefeffb8870de3c100c3ac" alt="">
+                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/BKiqwf8a2dCwdgg?file=/&fileId=70850&x=1920&y=1080&a=true&etag=48886cbf860e59511c8e1935c9f75b65" alt="Sheet 2">
                         <canvas class="draw-canvas"></canvas>
                     </div>
                 </div>
@@ -689,7 +685,7 @@
         // —————————————— Status. ————————————————————————————————————————
         function setStatus(ok) {
             statusDot.classList.toggle("online", ok);
-            statusLabel.textContent = ok ? "在线" : "离线";
+            statusLabel.textContent = ok ? `在线 · ${whoAmI}` : "离线";
         }
 
         // —————————————— Role selector. ————————————————————————————————————————
@@ -1154,6 +1150,38 @@
 
         // —————————————— Init. ————————————————————————————————————————
         renderRoles();
+
+        async function loadSheets() {
+            try {
+                const response = await fetch("https://cloud.aleleeu.it/s/SPzQneHWZSS8tjP/download?path=/&files=sheets.json");
+                if(!response.ok) throw new Error("Failed to load sheets.json");
+                
+                const data = await response.json();
+
+                const track = document.getElementById("sheets-track");
+                track.innerHTML = '';
+
+                data.sheets.forEach((url, index) => {
+                    const sheetDiv = document.createElement("div");
+                    sheetDiv.className = "sheet";
+                    sheetDiv.setAttribute("data-index", index);
+                    sheetDiv.innerHTML = `
+                        <img src="${url}" alt="Sheet ${index + 1}">
+                        <canvas class="draw-canvas"></canvas>
+                    `;
+
+                    track.appendChild(sheetDiv);
+                });
+
+                initSheetCarousel();
+                setupDrawingUI();
+            } catch(error) {
+                console.error("Error loading sheets", error);
+                document.getElementById("sheets-track").innerHTML = `<div class="empty-log">Failed to load worship sheets. Please try again later.</div>`;
+            }
+        }
+
+        // loadSheets();
     </script>
 </body>
 </html>
