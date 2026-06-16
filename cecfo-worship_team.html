@@ -681,6 +681,7 @@
         let isDrawing = false;
         let lastX = 0, lastY = 0;
         let drawings = [];
+        let sheetStrokes = [];
         let bCastTimer = null;
         let pendingDrawHistory = null;
         let zoomScale = 1;
@@ -688,6 +689,7 @@
         let isPanning = false;
         let panStartX = 0, panStartY = 0;
         let undoStack = [];
+        let deletedDuringDrag = new Set();
 
         // —————————————— DOM references. ————————————————————————————————————————
         const rolePanel = document.getElementById("role-panel");
@@ -703,6 +705,7 @@
         const customMsg = document.getElementById("custom-msg");
 
         drawings = new Array(sheets.length).fill(null);
+        sheetStrokes = new Array(sheets.length).fill(null).map(() => []);
         undoStack = new Array(sheets.length).fill(null).map(() => []);
 
         // —————————————— Helper functions. ————————————————————————————————————————
@@ -712,6 +715,16 @@
 
         function timeToString() {
             return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+
+        function distanceToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const nearX = x1 + t * dx, nearY = y1 + t * dy;
+            return Math.hypot(px - nearX, py - nearY);
         }
 
         // —————————————— Status. ————————————————————————————————————————
@@ -942,17 +955,6 @@
             });
         }
 
-        function saveCanvas(canvas) {
-            const idx = parseInt(canvas.parentElement.parentElement.dataset.index);
-            if (isNaN(idx)) return;
-            const imageData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-            drawings[idx] = imageData;
-
-            if (!undoStack[idx]) undoStack[idx] = [];
-            undoStack[idx].push(imageData);
-            if (undoStack[idx].length > 37) undoStack[idx].shift();
-        }
-
         // —————————————— Drawing. ————————————————————————————————————————
         function drawLine(ctx, x1, y1, x2, y2, color, size, eraser, highlight) {
             ctx.save();
@@ -982,8 +984,47 @@
             ctx.restore();
         }
 
+        function renderSheet(idx) {
+            const canvas = canvases[idx];
+            if (!canvas) return;
+
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const strokes = sheetStrokes[idx] || [];
+            for (const stroke of strokes) {
+                if (stroke.points.length < 2) continue;
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+
+                if (stroke.type === "highlight") {
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.globalAlpha = 0.37;
+                    ctx.strokeStyle = stroke.color;
+                    ctx.lineWidth = stroke.size * 3;
+                } else {
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.globalAlpha = 1;
+                    ctx.strokeStyle = stroke.color;
+                    ctx.lineWidth = stroke.size;
+                }
+
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+                ctx.stroke();
+                ctx.restore();
+            }
+            drawings[idx] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
         function initCanvasEvents(canvas) {
+            let strokePoints = [];
             let highlightPoints = [];
+            let preHighlight = null;
 
             const getCoords = e => {
                 const rect = canvas.getBoundingClientRect();
@@ -1008,6 +1049,37 @@
                     panStartY = src.clientY - panY;
                     canvas.style.cursor = "grabbing";
                     return;
+                } else if (activeTool === "eraser") {
+                    deletedDuringDrag = new Set();
+
+                    const { x, y } = getCoords(e);
+                    const idx = currentSheetIndex;
+                    const strokes = sheetStrokes[idx] || [];
+                    let foundIndex = -1;
+                    const threshold = 20;
+                    let minDist = Infinity;
+                    for (let s = 0; s < strokes.length; s++) {
+                        const pts = strokes[s].points;
+                        for (let p = 0; p < pts.length - 1; p++) {
+                            const dist = distanceToSegment(x, y, pts[p].x, pts[p].y, pts[p + 1].x, pts[p + 1].y);
+                            if (dist < threshold && dist < minDist) {
+                                minDist = dist;
+                                foundIndex = s;
+                            }
+                        }
+                    }
+
+                    if (foundIndex !== -1) {
+                        const removed = strokes.splice(foundIndex, 1)[0];
+                        deletedDuringDrag.add(foundIndex);
+                        undoStack[idx].push({ type: "delete", stroke: removed, index: foundIndex });
+                        renderSheet(idx);
+
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ type: "delete_stroke", sheetIndex: idx, strokeId: foundIndex }));
+                        }
+                    }
+                    return;
                 }
 
                 isDrawing = true;
@@ -1015,34 +1087,20 @@
                 const { x, y } = getCoords(e);
                 lastX = x;
                 lastY = y;
+                strokePoints = [{ x, y }];
 
                 if (activeTool === "highlight") {
                     highlightPoints = [{ x, y }];
-                    return;
-                }
-
-                const ctx = canvas.getContext("2d");
-                ctx.beginPath();
-                if(activeTool === "eraser") {
-                    ctx.globalCompositeOperation = "destination-out";
-                    ctx.arc(x, y, brushSize, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalCompositeOperation = "source-over";
-                } else if (activeTool === "highlight") {
-                    ctx.globalCompositeOperation = "multiply";
-                    ctx.globalAlpha = 0.37;
-                    ctx.fillStyle = currentColor;
-                    ctx.arc(x, y, brushSize * 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalCompositeOperation = "source-over";
-                    ctx.globalAlpha = 1;
+                    const ctx = canvas.getContext("2d");
+                    preHighlight = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 } else {
+                    const ctx = canvas.getContext("2d");
+                    ctx.beginPath();
                     ctx.fillStyle = currentColor;
                     ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
                     ctx.fill();
+                    sendStroke(x, y, x, y);
                 }
-
-                sendStroke(x, y, x, y);
             };
 
             const move = e => {
@@ -1054,19 +1112,70 @@
                     panY = src.clientY - panStartY;
                     applyZoom(false);
                     return;
+                } else if (activeTool === "eraser") {
+                    const { x, y } = getCoords(e);
+                    const idx = currentSheetIndex;
+                    const strokes = sheetStrokes[idx] || [];
+                    let foundIndex = -1;
+                    const threshold = 20;
+                    let minDist = Infinity;
+
+                    for (let s = 0; s < strokes.length; s++) {
+                        if (deletedDuringDrag.has(s)) continue;
+                        const pts = strokes[s].points;
+                        for (let p = 0; p < pts.length - 1; p++) {
+                            const dist = distanceToSegment(x, y, pts[p].x, pts[p].y, pts[p + 1].x, pts[p + 1].y);
+                            if (dist < threshold && dist < minDist) {
+                                minDist = dist;
+                                foundIndex = s;
+                            }
+                        }
+                    }
+
+                    if (foundIndex !== -1) {
+                        const removed = strokes.splice(foundIndex, 1)[0];
+                        deletedDuringDrag.add(foundIndex);
+                        undoStack[idx].push({ type: "delete", stroke: removed, index: foundIndex });
+                        renderSheet(idx);
+
+                        if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "delete_stroke", sheetIndex: idx, strokeId: foundIndex }));
+                    }
+                    return;
                 }
 
                 if (!isDrawing || !drawingEnabled) return;
                 e.preventDefault();
                 const { x, y } = getCoords(e);
+                strokePoints.push({ x, y });
 
                 if (activeTool === "highlight") {
                     highlightPoints.push({ x, y });
+
+                    const ctx = canvas.getContext("2d");
+                    ctx.putImageData(preHighlight, 0, 0);
+
+                    if (highlightPoints.length > 1) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(highlightPoints[0].x, highlightPoints[0].y);
+                        for (let i = 1; i < highlightPoints.length; i++) {
+                            ctx.lineTo(highlightPoints[i].x, highlightPoints[i].y);
+                        }
+
+                        ctx.globalCompositeOperation = "source-over";
+                        ctx.globalAlpha = 0.37;
+                        ctx.strokeStyle = currentColor;
+                        ctx.lineWidth = brushSize * 3;
+                        ctx.lineCap = "round";
+                        ctx.lineJoin = "round";
+                        ctx.stroke();
+                        ctx.restore();
+                    }
                     return;
                 }
 
                 const ctx = canvas.getContext("2d");
-                drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, activeTool === "eraser", activeTool === "highlight");
+                drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, false, false);
                 sendStroke(lastX, lastY, x, y);
                 lastX = x;
                 lastY = y;
@@ -1077,35 +1186,29 @@
                     isPanning = false;
                     canvas.style.cursor = "grab";
                     return;
-                }
+                } else if (activeTool === "eraser") deletedDuringDrag.clear();
 
                 if (!isDrawing) return;
 
+                const idx = currentSheetIndex;
+                let stroke = null;
+
                 if (activeTool === "highlight" && highlightPoints.length > 1) {
-                    const ctx = canvas.getContext("2d");
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(highlightPoints[0].x, highlightPoints[0].y);
-                    for (let i = 1; i < highlightPoints.length; i++) {
-                        ctx.lineTo(highlightPoints[i].x, highlightPoints[i].y);
-                    }
-
-                    ctx.globalCompositeOperation = "source-over";
-                    ctx.globalAlpha = 0.37;
-                    ctx.strokeStyle = currentColor;
-                    ctx.lineWidth = brushSize * 3;
-                    ctx.lineCap = "round";
-                    ctx.lineJoin = "round";
-                    ctx.stroke();
-                    ctx.restore();
-
-                    saveCanvas(canvas);
+                    stroke = { points: highlightPoints.slice(), color: currentColor, size: brushSize, type: "highlight" };
+                    sheetStrokes[idx].push(stroke);
+                    undoStack[idx].push({ type: "add", stroke: stroke });
+                    renderSheet(idx);
+                } else if (activeTool !== "highlight" && strokePoints.length > 1) {
+                    stroke = { points: strokePoints.slice(), color: currentColor, size: brushSize, type: "pen" };
+                    sheetStrokes[idx].push(stroke);
+                    undoStack[idx].push({ type: "add", stroke: stroke });
+                    renderSheet(idx);
                 }
 
-                if (activeTool !== "highlight") saveCanvas(canvas);
-
                 isDrawing = false;
+                strokePoints = [];
                 highlightPoints = [];
+                preHighlight = null;
             };
 
             canvas.addEventListener("mousedown", start);
@@ -1135,7 +1238,15 @@
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
             drawLine(ctx, msg.x1, msg.y1, msg.x2, msg.y2, msg.color, msg.size, msg.isEraser, msg.isHighlight);
-            saveCanvas(canvas);
+
+            if (!msg.isEraser) {
+                const stroke = { points: [{ x: msg.x1, y: msg.y1 }, { x: msg.x2, y: msg.y2 }], color: msg.color, size: msg.size, type: msg.isHighlight ? "highlight": "pen" };
+                if (!sheetStrokes[msg.sheetIndex]) sheetStrokes[msg.sheetIndex] = [];
+                sheetStrokes[msg.sheetIndex].push(stroke);
+                renderSheet(msg.sheetIndex);
+            } else {
+                renderSheet(msg.sheetIndex);
+            }
         }
 
         function applyRemoteClearSheet(idx) {
@@ -1143,8 +1254,9 @@
             if(!canvas) return;
             const ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            sheetStrokes[idx] = [];
             undoStack[idx] = [];
-            saveCanvas(canvas);
+            renderSheet(idx);
         }
 
         function replayDrawHistory(strokes) {
@@ -1283,17 +1395,18 @@
                 const idx = currentSheetIndex;
                 const stack = undoStack[idx];
                 if (!stack || stack.length === 0) return;
-                stack.pop();
-                const canvas = canvases[idx];
-                const ctx = canvas.getContext("2d");
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                if (stack.length > 0) {
-                    ctx.putImageData(stack[stack.length - 1], 0, 0);
-                    drawings[idx] = stack[stack.length - 1];
-                } else {
-                    drawings[idx] = null;
+
+                const op = stack.pop();
+                if (op.type === "add") {
+                    const strokes = sheetStrokes[idx];
+                    strokes.pop();
+                    renderSheet(idx);
+                } else if (op.type === "delete") {
+                    const strokes = sheetStrokes[idx];
+                    strokes.splice(op.index, 0, op.stroke);
+                    renderSheet(idx);
                 }
-            }
+            };
 
             document.getElementById("clear-sheet-btn").onclick = () => {
                 if(!confirm("清楚当前歌谱所有标注？")) return;
