@@ -231,7 +231,18 @@
             background: #060810;
         }
 
-        .sheet img {
+        .sheet-inner {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+            transition: transform 0.15s ease;
+        }
+
+        .sheet-inner img {
             max-height: 90%;
             max-width: 96%;
             object-fit: contain;
@@ -577,22 +588,27 @@
             <div class="sheet-carousel" id="sheet-carousel">
                 <div class="sheets-track" id="sheets-track">
                     <div class="sheet" data-index="0">
-                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/fNW58BtMdPktWYt?file=/&fileId=70852&x=1920&y=1080&a=true&etag=858374fae490e98843292b1672312ce2" alt="Sheet 1">
-                        <canvas class="draw-canvas"></canvas>
+                        <div class="sheet-inner">
+                            <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/fNW58BtMdPktWYt?file=/&fileId=70852&x=1920&y=1080&a=true&etag=858374fae490e98843292b1672312ce2" alt="Sheet 1">
+                            <canvas class="draw-canvas"></canvas>
+                        </div>
                     </div>
                     <div class="sheet" data-index="1">
-                        <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/BKiqwf8a2dCwdgg?file=/&fileId=70850&x=1920&y=1080&a=true&etag=48886cbf860e59511c8e1935c9f75b65" alt="Sheet 2">
-                        <canvas class="draw-canvas"></canvas>
+                        <div class="sheet-inner">
+                            <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/BKiqwf8a2dCwdgg?file=/&fileId=70850&x=1920&y=1080&a=true&etag=48886cbf860e59511c8e1935c9f75b65" alt="Sheet 2">
+                            <canvas class="draw-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
                 <div class="sheet-nav prev" id="sheet-nav-prev"><</div>
                 <div class="sheet-nav next" id="sheet-nav-next">></div>
-                <div class="sheet-counter" id="sheet-counter">1 / 4</div>
+                <div class="sheet-counter" id="sheet-counter">0 / 0</div>
 
                 <div class="drawing-toolbar">
                     <button class="draw-tool-btn draw-on" id="toggle-draw-btn">✏️ 绘图</button>
                     <div class="toolbar-sep"></div>
                     <button class="draw-tool-btn active" id="draw-pen-btn">笔</button>
+                    <button class="draw-tool-btn" id="draw-highlight-btn">荧光</button>
                     <button class="draw-tool-btn" id="draw-eraser-btn">橡皮</button>
                     <div class="toolbar-sep"></div>
                     <div class="color-picker" id="color-picker" style="background: #F3DA9F;">
@@ -600,8 +616,13 @@
                     </div>
                     <input type="range" class="size-slider" id="brush-size" min="2" max="15" value="7">
                     <div class="toolbar-sep"></div>
+                    <button class="draw-tool-btn" id="draw-zoom-in">🔍+</button>
+                    <button class="draw-tool-btn" id="draw-zoom-out">🔍-</button>
+                    <button class="draw-tool-btn" id="draw-zoom-reset">重置</button>
+                    <button class="draw-tool-btn" id="draw-pan-btn">✋</button>
+                    <div class="toolbar-sep"></div>
+                    <button class="draw-tool-btn" id="draw-undo-btn">撤销</button>
                     <button class="draw-tool-btn" id="clear-sheet-btn">清当前页</button>
-                    <button class="draw-tool-btn" id="clear-all-sheet-btn">清全部页</button>
                 </div>
 
             </div>
@@ -660,6 +681,11 @@
         let drawings = [];
         let bCastTimer = null;
         let pendingDrawHistory = null;
+        let zoomScale = 1;
+        let panX = 0, panY = 0;
+        let isPanning = false;
+        let panStartX = 0, panStartY = 0;
+        let undoStack = [];
 
         // —————————————— DOM references. ————————————————————————————————————————
         const rolePanel = document.getElementById("role-panel");
@@ -675,6 +701,7 @@
         const customMsg = document.getElementById("custom-msg");
 
         drawings = new Array(sheets.length).fill(null);
+        undoStack = new Array(sheets.length).fill(null).map(() => []);
 
         // —————————————— Helper functions. ————————————————————————————————————————
         function escHtml(s) {
@@ -783,10 +810,6 @@
                     applyRemoteClearSheet(msg.sheetIndex);
                     appendMsg("系统", `第 ${msg.sheetIndex + 1} 页标注已清除`, "broadcast");
                     break;
-                case "clear_all_sheet":
-                    applyRemoteClearAllSheet();
-                    appendMsg("系统", "全部标注已清除", "broadcast");
-                    break;
                 case "draw_history":
                     if(contentArea.style.display === "flex") replayDrawHistory(msg.strokes);
                     else pendingDrawHistory = msg.strokes;
@@ -862,7 +885,7 @@
                 currentSheetIndex = (i + total) % total;
                 sheetsTrack.style.transform = `translateX(-${currentSheetIndex * 100}%)`;
                 document.getElementById("sheet-counter").textContent = `${currentSheetIndex + 1} / ${total}`;
-
+                resetZoom();
                 setTimeout(() => resizeAllCanvases(), 260);
             }
 
@@ -901,7 +924,7 @@
             canvas.style.left = (imgRect.left - parentRect.left) + "px";
             canvas.style.top = (imgRect.top - parentRect.top) + "px";
 
-            const prev = drawings[parseInt(canvas.parentElement.dataset.index)];
+            const prev = drawings[parseInt(canvas.parentElement.parentElement.dataset.index)];
             canvas.width = imgRect.width;
             canvas.height = imgRect.height;
 
@@ -917,20 +940,30 @@
         }
 
         function saveCanvas(canvas) {
-            const idx = parseInt(canvas.parentElement.dataset.index);
-            drawings[idx] = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+            const idx = parseInt(canvas.parentElement.parentElement.dataset.index);
+            const imageData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+            drawings[idx] = imageData;
+
+            if (!undoStack[idx]) undoStack[idx] = [];
+            undoStack[idx].push(imageData);
+            if (undoStack[idx].length > 37) undoStack[idx].shift();
         }
 
         // —————————————— Drawing. ————————————————————————————————————————
-        function drawLine(ctx, x1, y1, x2, y2, color, size, eraser) {
+        function drawLine(ctx, x1, y1, x2, y2, color, size, eraser, highlight) {
             ctx.save();
             ctx.beginPath();
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
-            if(eraser) {
+            if (eraser) {
                 ctx.globalCompositeOperation = "destination-out";
                 ctx.strokeStyle = "rgba(0, 0, 0, 1)";
                 ctx.lineWidth = size * 1.5;
+            } else if (highlight) {
+                ctx.globalCompositeOperation = "multiply";
+                ctx.strokeStyle = color;
+                ctx.lineWidth = size * 4;
+                ctx.globalAlpha = 0.37;
             } else {
                 ctx.globalCompositeOperation = "source-over";
                 ctx.strokeStyle = color;
@@ -959,6 +992,16 @@
             const start = e => {
                 if(!drawingEnabled) return;
                 e.preventDefault();
+
+                if (activeTool === "pan") {
+                    isPanning = true;
+                    const src = e.touches ? e.touches[0] : e;
+                    panStartX = src.clientX - panX;
+                    panStartY = src.clientY - panY;
+                    canvas.style.cursor = "grabbing";
+                    return;
+                }
+
                 isDrawing = true;
 
                 const { x, y } = getCoords(e);
@@ -971,6 +1014,14 @@
                     ctx.arc(x, y, brushSize, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.globalCompositeOperation = "source-over";
+                } else if (activeTool === "highlight") {
+                    ctx.globalCompositeOperation = "multiply";
+                    ctx.globalAlpha = 0.37;
+                    ctx.fillStyle = currentColor;
+                    ctx.arc(x, y, brushSize * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.globalAlpha = 1;
                 } else {
                     ctx.fillStyle = currentColor;
                     ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
@@ -982,17 +1033,31 @@
             };
 
             const move = e => {
+                if (activeTool === "pan" && isPanning) {
+                    e.preventDefault();
+
+                    const src = e.touches ? e.touches[0] : e;
+                    panX = src.clientX - panStartX;
+                    panY = src.clientY - panStartY;
+                    applyZoom(false);
+                    return;
+                }
+
                 if(!isDrawing || !drawingEnabled) return;
                 e.preventDefault();
                 const { x, y } = getCoords(e);
                 const ctx = canvas.getContext("2d");
-                drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, activeTool === "eraser");
+                drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, activeTool === "eraser", activeTool === "highlight");
                 sendStroke(lastX, lastY, x, y);
                 lastX = x; lastY = y;
                 saveCanvas(canvas);
             };
 
-            const end = () => { isDrawing = false; };
+            const end = () => {
+                isDrawing = false;
+                isPanning = false;
+                if (activeTool == "pan") canvas.style.cursor = "grab";
+            };
 
             canvas.addEventListener("mousedown", start);
             canvas.addEventListener("mousemove", move);
@@ -1011,15 +1076,16 @@
                 x1, y1, x2, y2,
                 color : currentColor,
                 size: brushSize,
-                isEraser: activeTool === "eraser"
+                isEraser: activeTool === "eraser",
+                isHighlight: activeTool === "highlight"
             }));
         }
 
         function applyRemoteStroke(msg) {
             const canvas = canvases[msg.sheetIndex];
-            if(!canvas) return;
+            if (!canvas) return;
             const ctx = canvas.getContext("2d");
-            drawLine(ctx, msg.x1, msg.y1, msg.x2, msg.y2, msg.color, msg.size, msg.isEraser);
+            drawLine(ctx, msg.x1, msg.y1, msg.x2, msg.y2, msg.color, msg.size, msg.isEraser, msg.isHighlight);
             saveCanvas(canvas);
         }
 
@@ -1031,13 +1097,6 @@
             saveCanvas(canvas);
         }
 
-        function applyRemoteClearAllSheet() {
-            canvases.forEach(c => {
-                c.getContext("2d").clearRect(0, 0, c.width, c.height);
-                saveCanvas(c);
-            });
-        }
-
         function replayDrawHistory(strokes) {
             const images = [...sheets].map(s => s.querySelector("img"));
             const allLoaded = images.every(img => img.complete && img.naturalWidth > 0);
@@ -1046,7 +1105,6 @@
                 strokes.forEach(stroke => {
                     if(stroke.type === "draw_stroke") applyRemoteStroke(stroke);
                     else if(stroke.type === "clear_sheet") applyRemoteClearSheet(stroke.sheetIndex);
-                    else if(stroke.type === "clear_all_sheet") applyRemoteClearAllSheet();
                 });
             };
 
@@ -1113,16 +1171,40 @@
             };
 
             const pen = document.getElementById("draw-pen-btn");
+            const highlight = document.getElementById("draw-highlight-btn");
             const eraser = document.getElementById("draw-eraser-btn");
+            const pan = document.getElementById("draw-pan-btn");
             pen.onclick = () => {
                 activeTool = "pen";
                 pen.classList.add("active");
+                highlight.classList.remove("active");
                 eraser.classList.remove("active");
+                pan.classList.remove("active");
+                canvases.forEach(c => { c.style.cursor = "crosshair"; });
             };
+            highlight.onclick = () => {
+                activeTool = "highlight";
+                highlight.classList.add("active");
+                pen.classList.remove("active");
+                eraser.classList.remove("active");
+                pan.classList.remove("active");
+                canvases.forEach(c => { c.style.cursor = "crosshair"; });
+            }
             eraser.onclick = () => {
                 activeTool = "eraser";
                 eraser.classList.add("active");
                 pen.classList.remove("active");
+                highlight.classList.remove("active");
+                pan.classList.remove("active");
+                canvases.forEach(c => { c.style.cursor = "crosshair"; });
+            };
+            pan.onclick = () => {
+                activeTool = "pan";
+                pan.classList.add("active");
+                pen.classList.remove("active");
+                highlight.classList.remove("active");
+                eraser.classList.remove("active");
+                canvases.forEach(c => { c.style.cursor = "grab"; });
             };
 
             const colorInput = document.getElementById("draw-color");
@@ -1135,20 +1217,57 @@
 
             document.getElementById("brush-size").oninput = e => { brushSize = parseInt(e.target.value); };
 
+            document.getElementById("draw-zoom-in").onclick = () => {
+                zoomScale = Math.min(zoomScale + 0.25, 4);
+                applyZoom();
+            };
+
+            document.getElementById("draw-zoom-out").onclick = () => {
+                zoomScale = Math.max(zoomScale - 0.25, 0.5);
+                applyZoom();
+            };
+
+            document.getElementById("draw-zoom-reset").onclick = () => resetZoom();
+
+            document.getElementById("draw-undo-btn").onclick = () => {
+                const idx = currentSheetIndex;
+                const stack = undoStack[idx];
+                if (!stack || stack.length === 0) return;
+                stack.pop();
+                const canvas = canvases[idx];
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (stack.length > 0) {
+                    ctx.putImageData(stack[stack.length - 1], 0, 0);
+                    drawings[idx] = stack[stack.length - 1];
+                } else {
+                    drawings[idx] = null;
+                }
+            }
+
             document.getElementById("clear-sheet-btn").onclick = () => {
                 if(!confirm("清楚当前歌谱所有标注？")) return;
                 applyRemoteClearSheet(currentSheetIndex);
+                undoStack[currentSheetIndex] = [];
 
                 if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "clear_sheet", sheetIndex: currentSheetIndex }));
                     appendMsg("系统", `第 ${currentSheetIndex + 1} 页标注已清除`, "broadcast");
             };
+        }
 
-            document.getElementById("clear-all-sheet-btn").onclick = () => {
-                if (!confirm("清除全部歌谱标注？")) return;
-                applyRemoteClearAllSheet();
-                if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "clear_all_sheet" }));
-                appendMsg("系统", "全部标注已清除", "broadcast");
-            };
+        function getSheetInner(idx) {
+            return sheets[idx].querySelector(".sheet-inner");
+        }
+
+        function applyZoom(animate = true) {
+            const inner = getSheetInner(currentSheetIndex);
+            inner.style.transition = animate ? "transform 0.15 s ease" : "none";
+            inner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+        }
+
+        function resetZoom() {
+            zoomScale = 1; panX = 0; panY = 0;
+            applyZoom();
         }
 
         // —————————————— Init. ————————————————————————————————————————
