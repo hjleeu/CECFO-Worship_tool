@@ -616,7 +616,7 @@
                     <div class="color-picker" id="color-picker" style="background: #F3DA9F;">
                         <input type="color" id="draw-color" value="#F3DA9F">
                     </div>
-                    <input type="range" class="size-slider" id="brush-size" min="2" max="15" value="7">
+                    <input type="range" class="size-slider" id="brush-size" min="2" max="30" value="15">
                     <div class="toolbar-sep"></div>
                     <button class="draw-tool-btn" id="draw-zoom-in">🔍+</button>
                     <button class="draw-tool-btn" id="draw-zoom-out">🔍-</button>
@@ -677,7 +677,7 @@
         let drawingEnabled = true;
         let activeTool = "pen";
         let currentColor = "#FFD966";
-        let brushSize = 7;
+        let brushSize = 15;
         let isDrawing = false;
         let lastX = 0, lastY = 0;
         let drawings = [];
@@ -921,14 +921,15 @@
             const imgRect = img.getBoundingClientRect();
             const parentRect = canvas.parentElement.getBoundingClientRect();
 
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+
             canvas.style.width = imgRect.width + "px";
             canvas.style.height = imgRect.height + "px";
             canvas.style.left = (imgRect.left - parentRect.left) + "px";
             canvas.style.top = (imgRect.top - parentRect.top) + "px";
 
             const prev = drawings[parseInt(canvas.parentElement.parentElement.dataset.index)];
-            canvas.width = imgRect.width;
-            canvas.height = imgRect.height;
 
             if (prev) canvas.getContext("2d").putImageData(prev, 0, 0);
         }
@@ -963,10 +964,12 @@
                 ctx.strokeStyle = "rgba(0, 0, 0, 1)";
                 ctx.lineWidth = size * 1.5;
             } else if (highlight) {
-                ctx.globalCompositeOperation = "multiply";
+                ctx.globalCompositeOperation = "source-over";
                 ctx.strokeStyle = color;
-                ctx.lineWidth = size * 4;
+                ctx.lineWidth = size * 3;
                 ctx.globalAlpha = 0.37;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
             } else {
                 ctx.globalCompositeOperation = "source-over";
                 ctx.strokeStyle = color;
@@ -980,6 +983,8 @@
         }
 
         function initCanvasEvents(canvas) {
+            let highlightPoints = [];
+
             const getCoords = e => {
                 const rect = canvas.getBoundingClientRect();
                 const sx = canvas.width / rect.width;
@@ -1008,7 +1013,13 @@
                 isDrawing = true;
 
                 const { x, y } = getCoords(e);
-                lastX = x; lastY = y;
+                lastX = x;
+                lastY = y;
+
+                if (activeTool === "highlight") {
+                    highlightPoints = [{ x, y }];
+                    return;
+                }
 
                 const ctx = canvas.getContext("2d");
                 ctx.beginPath();
@@ -1045,20 +1056,56 @@
                     return;
                 }
 
-                if(!isDrawing || !drawingEnabled) return;
+                if (!isDrawing || !drawingEnabled) return;
                 e.preventDefault();
                 const { x, y } = getCoords(e);
+
+                if (activeTool === "highlight") {
+                    highlightPoints.push({ x, y });
+                    return;
+                }
+
                 const ctx = canvas.getContext("2d");
                 drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, activeTool === "eraser", activeTool === "highlight");
                 sendStroke(lastX, lastY, x, y);
-                lastX = x; lastY = y;
+                lastX = x;
+                lastY = y;
             };
 
             const end = () => {
-                if (isDrawing) saveCanvas(canvas);
+                if (activeTool === "pan") {
+                    isPanning = false;
+                    canvas.style.cursor = "grab";
+                    return;
+                }
+
+                if (!isDrawing) return;
+
+                if (activeTool === "highlight" && highlightPoints.length > 1) {
+                    const ctx = canvas.getContext("2d");
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(highlightPoints[0].x, highlightPoints[0].y);
+                    for (let i = 1; i < highlightPoints.length; i++) {
+                        ctx.lineTo(highlightPoints[i].x, highlightPoints[i].y);
+                    }
+
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.globalAlpha = 0.37;
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = brushSize * 3;
+                    ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
+                    ctx.stroke();
+                    ctx.restore();
+
+                    saveCanvas(canvas);
+                }
+
+                if (activeTool !== "highlight") saveCanvas(canvas);
+
                 isDrawing = false;
-                isPanning = false;
-                if (activeTool == "pan") canvas.style.cursor = "grab";
+                highlightPoints = [];
             };
 
             canvas.addEventListener("mousedown", start);
