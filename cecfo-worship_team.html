@@ -1407,6 +1407,9 @@
             };
             pan.onclick = () => {
                 activeTool = "pan";
+                drawingEnabled = false;
+                document.getElementById("toggle-draw-btn").textContent = "🔒 绘图";
+                document.getElementById("toggle-draw-btn").classList.remove("draw-on");
                 pan.classList.add("active");
                 pen.classList.remove("active");
                 highlight.classList.remove("active");
