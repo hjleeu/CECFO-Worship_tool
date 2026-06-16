@@ -6,5 +6,6 @@ COPY index.html .
 COPY cecfo-worship_server.js .
 COPY cecfo-worship_dashboard.html .
 COPY cecfo-worship_team.html .
+COPY cecfo-logo.png .
 EXPOSE 1314
 CMD ["node", "cecfo-worship_server.js"]

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CECFO | 敬拜团</title>
-    <link rel="shortcut icon" href="cecfo-logo.png" type="image/x-icon">
+    <link rel="icon" href="cecfo-logo.png" sizes="any">
+    <link rel="apple-touch-icon" href="cecfo-logo.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&family=ZCOOL+XiaoWei&display=swap');
 
@@ -942,6 +943,7 @@
 
         function saveCanvas(canvas) {
             const idx = parseInt(canvas.parentElement.parentElement.dataset.index);
+            if (isNaN(idx)) return;
             const imageData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
             drawings[idx] = imageData;
 
@@ -1029,7 +1031,6 @@
                     ctx.fill();
                 }
 
-                saveCanvas(canvas);
                 sendStroke(x, y, x, y);
             };
 
@@ -1051,10 +1052,10 @@
                 drawLine(ctx, lastX, lastY, x, y, currentColor, brushSize, activeTool === "eraser", activeTool === "highlight");
                 sendStroke(lastX, lastY, x, y);
                 lastX = x; lastY = y;
-                saveCanvas(canvas);
             };
 
             const end = () => {
+                if (isDrawing) saveCanvas(canvas);
                 isDrawing = false;
                 isPanning = false;
                 if (activeTool == "pan") canvas.style.cursor = "grab";
@@ -1095,6 +1096,7 @@
             if(!canvas) return;
             const ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            undoStack[idx] = [];
             saveCanvas(canvas);
         }
 
