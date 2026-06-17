@@ -1096,7 +1096,6 @@
             };
 
             const start = e => {
-                if(!drawingEnabled) return;
                 e.preventDefault();
 
                 if (activeTool === "pan") {
@@ -1106,7 +1105,11 @@
                     panStartY = src.clientY - panY;
                     canvas.style.cursor = "grabbing";
                     return;
-                } else if (activeTool === "eraser") {
+                }
+                
+                if(!drawingEnabled) return;
+                
+                if (activeTool === "eraser") {
                     deletedDuringDrag = new Set();
 
                     const { x, y } = getCoords(e);
@@ -1395,7 +1398,10 @@
             const pan = document.getElementById("draw-pan-btn");
             pen.onclick = () => {
                 activeTool = "pen";
+                drawingEnabled = true;
+                document.getElementById("toggle-draw-btn").textContent = "✍🏻 绘图";
                 pen.classList.add("active");
+                document.getElementById("toggle-draw-btn").classList.add("draw-on");
                 highlight.classList.remove("active");
                 eraser.classList.remove("active");
                 pan.classList.remove("active");
@@ -1403,6 +1409,9 @@
             };
             highlight.onclick = () => {
                 activeTool = "highlight";
+                drawingEnabled = true;
+                document.getElementById("toggle-draw-btn").textContent = "✍🏻 绘图";
+                document.getElementById("toggle-draw-btn").classList.add("draw-on");
                 highlight.classList.add("active");
                 pen.classList.remove("active");
                 eraser.classList.remove("active");
@@ -1411,6 +1420,9 @@
             }
             eraser.onclick = () => {
                 activeTool = "eraser";
+                drawingEnabled = true;
+                document.getElementById("toggle-draw-btn").textContent = "✍🏻 绘图";
+                document.getElementById("toggle-draw-btn").classList.add("draw-on");
                 eraser.classList.add("active");
                 pen.classList.remove("active");
                 highlight.classList.remove("active");
@@ -1484,7 +1496,7 @@
 
         function applyZoom(animate = true) {
             const inner = getSheetInner(currentSheetIndex);
-            inner.style.transition = animate ? "transform 0.15 s ease" : "none";
+            inner.style.transition = animate ? "transform 0.15s ease" : "none";
             inner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
         }
 
