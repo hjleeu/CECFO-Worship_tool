@@ -596,26 +596,7 @@
     <div class="content-area" id="content-area">
         <div class="left-main">
             <div class="sheet-carousel" id="sheet-carousel">
-                <div class="sheets-track" id="sheets-track">
-                    <div class="sheet" data-index="0">
-                        <div class="sheet-inner">
-                            <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/SPzQneHWZSS8tjP?file=/7.%E6%95%AC%E6%8B%9C%E4%B8%87%E4%B8%96%E4%B9%8B%E7%8E%8B.jpg&fileId=70922&x=1920&y=1080&a=true&etag=3b343df80f8add1a3aa24ce2df93ced0" alt="Sheet 1">
-                            <canvas class="draw-canvas"></canvas>
-                        </div>
-                    </div>
-                    <div class="sheet" data-index="1">
-                        <div class="sheet-inner">
-                            <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/SPzQneHWZSS8tjP?file=/%E6%89%80%E6%9C%89%E7%9A%84%E8%8D%A3%E8%80%80%E5%BD%92%E4%BA%8E%E4%BD%A0.jpg&fileId=70924&x=1920&y=1080&a=true&etag=5cb016637be2798ddf67599968e3bb4f" alt="Sheet 2">
-                            <canvas class="draw-canvas"></canvas>
-                        </div>
-                    </div>
-                    <div class="sheet" data-index="2">
-                        <div class="sheet-inner">
-                            <img src="https://cloud.aleleeu.it/apps/files_sharing/publicpreview/SPzQneHWZSS8tjP?file=/211.%E4%B8%BB%E5%95%8A%E6%88%91%E6%84%BF%E4%B8%80%E7%94%9F%E7%8C%AE%E4%BA%8E%E4%BD%A0.jpg&fileId=70909&x=1920&y=1080&a=true&etag=7a5d14032782d42e34510ad30a607b19" alt="Sheet 3">
-                            <canvas class="draw-canvas"></canvas>
-                        </div>
-                    </div>
-                </div>
+                <div class="sheets-track" id="sheets-track"></div>
                 <div class="sheet-nav prev" id="sheet-nav-prev"><</div>
                 <div class="sheet-nav next" id="sheet-nav-next">></div>
                 <div class="sheet-counter" id="sheet-counter">0 / 0</div>
@@ -707,6 +688,7 @@
         <div class="bcast-text" id="bcast-text"></div>
     </div>
 
+    <script src="https://raw.githubusercontent.com/hjleeu/CECFO-Worship_tool/refs/heads/main/sheets.js"></script>
     <script>
         const ROLES = ["🎤 无线1号", "🎤 无线2号", "🎤 无线3号", "🎤 无线4号", "🎤 无线5号", "🎹 琴", "🥁 鼓", "🎸 吉他", "🎸 贝斯"];
         const KIND_ICONS = {
@@ -1502,34 +1484,27 @@
         // —————————————— Init. ————————————————————————————————————————
         renderRoles();
 
-        async function loadSheets() {
-            try {
-                const response = await fetch("https://cloud.aleleeu.it/s/SPzQneHWZSS8tjP/download?path=/&files=sheets.json");
-                if(!response.ok) throw new Error("Failed to load sheets.json");
-                
-                const data = await response.json();
+        function loadSheets() {
+            const track = document.getElementById("sheets-track");
+            track.innerHTML = "";
 
-                const track = document.getElementById("sheets-track");
-                track.innerHTML = '';
-
-                data.sheets.forEach((url, index) => {
-                    const sheetDiv = document.createElement("div");
-                    sheetDiv.className = "sheet";
-                    sheetDiv.setAttribute("data-index", index);
-                    sheetDiv.innerHTML = `
+            SHEETS.forEach((url, index) => {
+                const sheet = document.createElement("div");
+                sheet.className = "sheet";
+                sheet.dataset.index = index;
+                sheet.innerHTML = `
+                    <div class="sheet-inner">
                         <img src="${url}" alt="Sheet ${index + 1}">
                         <canvas class="draw-canvas"></canvas>
-                    `;
+                    </div>
+                `;
+                track.appendChild(sheet);
+            });
 
-                    track.appendChild(sheetDiv);
-                });
-
-                initSheetCarousel();
-                setupDrawingUI();
-            } catch(error) {
-                console.error("Error loading sheets", error);
-                document.getElementById("sheets-track").innerHTML = `<div class="empty-log">Failed to load worship sheets. Please try again later.</div>`;
-            }
+            sheets   = [...document.querySelectorAll(".sheet")];
+            canvases = [...document.querySelectorAll(".draw-canvas")];
+            drawings  = new Array(sheets.length).fill(null);
+            undoStack = new Array(sheets.length).fill(null).map(() => []);
         }
 
         // loadSheets();
